@@ -1,10 +1,19 @@
+import {extractSkeleton} from './core/structure.js'
+
+/* Config */
+const DESIGN_SRC = './design/kbl-2.png'
+
+/* Constants */
 const canvas = document.getElementById('canvas')
 const ctx = canvas.getContext('2d')
-let imageData
 
-loadDesign()
+/* Init */
+loadDesign(imageData => {
+  extractSkeleton(imageData)
+})
 
-function loadDesign () {
+/* Functions */
+function loadDesign (callback) {
   const image = new Image()
   image.onload = function () {
     canvas.width = this.width
@@ -13,10 +22,10 @@ function loadDesign () {
     canvas.style.height = `${canvas.height / 2}px`
     console.warn('Canvas width', canvas.width)
     ctx.drawImage(this, 0, 0)
-    imageData = ctx.getImageData(
+    const imageData = ctx.getImageData(
       0, 0, canvas.width, canvas.height
     )
-    console.log(imageData)
+    callback(imageData)
   }
-  image.src = '/design/kbl-1.png'
+  image.src = DESIGN_SRC
 }
