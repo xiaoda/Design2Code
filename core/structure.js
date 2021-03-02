@@ -1,3 +1,1 @@
-export function extractSkeleton (imageData) {
-  console.log(imageData)
-}
+export function extractSkeleton () {}
