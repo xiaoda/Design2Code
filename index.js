@@ -12,8 +12,8 @@ const canvas = document.getElementById('canvas')
 const ctx = canvas.getContext('2d')
 
 /* Init */
-loadDesign(data => {
-  checkDesign(data)
+loadDesign(imageData => {
+  checkDesign(imageData)
   extractSkeleton()
 })
 
@@ -33,8 +33,7 @@ function loadDesign (callback) {
     canvas.style.height = `${height / designSizeRatio}px`
     ctx.drawImage(this, 0, 0)
     const imageData = ctx.getImageData(0, 0, width, height)
-    const data = {width, height, imageData}
-    callback(data)
+    callback(imageData)
   }
   image.src = DESIGN_SRC
 }
