@@ -5,54 +5,50 @@ import {
 
 class ColorCounter extends ValueCounter {
   getAverage () {
-    if (this.checkCache('average')) {
-      return this.getCache('average')
-    }
-    const sum = {
-      r: 0, g: 0, b: 0
-    }
-    for (const hex in this.valueCountMap) {
-      const count = this.valueCountMap[hex]
-      const {r, g, b} = hexToRgb(hex)
-      sum.r += r * count
-      sum.g += g * count
-      sum.b += b * count
-    }
-    const average = rgbToHex(
-      Math.floor(sum.r / this.totalCount),
-      Math.floor(sum.g / this.totalCount),
-      Math.floor(sum.b / this.totalCount)
-    )
-    this.setCache('average', average)
-    return average
+    return this.useCache('average', _ => {
+      const sum = {
+        r: 0, g: 0, b: 0
+      }
+      for (const hex in this.valueCountMap) {
+        const count = this.valueCountMap[hex]
+        const {r, g, b} = hexToRgb(hex)
+        sum.r += r * count
+        sum.g += g * count
+        sum.b += b * count
+      }
+      const average = rgbToHex(
+        Math.floor(sum.r / this.totalCount),
+        Math.floor(sum.g / this.totalCount),
+        Math.floor(sum.b / this.totalCount)
+      )
+      return average
+    })
   }
 
   getVariance () {
-    if (this.checkCache('variance')) {
-      return this.getCache('variance')
-    }
-    const {
-      r: averageR,
-      g: averageG,
-      b: averageB
-    } = hexToRgb(this.getAverage())
-    const varianceSum = {
-      r: 0, g: 0, b: 0
-    }
-    for (const hex in this.valueCountMap) {
-      const {r, g, b} = hexToRgb(hex)
-      const count = this.valueCountMap[hex]
-      varianceSum.r += (r - averageR) ** 2 * count
-      varianceSum.g += (g - averageG) ** 2 * count
-      varianceSum.b += (b - averageB) ** 2 * count
-    }
-    const variance = (
-      varianceSum.r ** 2 +
-      varianceSum.g ** 2 +
-      varianceSum.b ** 2
-    ) ** 0.5 / this.totalCount
-    this.setCache('variance', variance)
-    return variance
+    return this.useCache('variance', _ => {
+      const {
+        r: averageR,
+        g: averageG,
+        b: averageB
+      } = hexToRgb(this.getAverage())
+      const varianceSum = {
+        r: 0, g: 0, b: 0
+      }
+      for (const hex in this.valueCountMap) {
+        const {r, g, b} = hexToRgb(hex)
+        const count = this.valueCountMap[hex]
+        varianceSum.r += (r - averageR) ** 2 * count
+        varianceSum.g += (g - averageG) ** 2 * count
+        varianceSum.b += (b - averageB) ** 2 * count
+      }
+      const variance = (
+        varianceSum.r ** 2 +
+        varianceSum.g ** 2 +
+        varianceSum.b ** 2
+      ) ** 0.5 / this.totalCount
+      return variance
+    })
   }
 
   getVarianceFromAnother (another) {
@@ -79,13 +75,11 @@ class ColorCounter extends ValueCounter {
   }
 
   getStandardDeviation () {
-    if (this.checkCache('standardDeviation')) {
-      return this.getCache('standardDeviation')
-    }
-    const variance = this.getVariance()
-    const standardDeviation = variance ** 0.5
-    this.setCache('standardDeviation', standardDeviation)
-    return standardDeviation
+    return this.useCache('standardDeviation', _ => {
+      const variance = this.getVariance()
+      const standardDeviation = variance ** 0.5
+      return standardDeviation
+    })
   }
 }
 

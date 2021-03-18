@@ -9,12 +9,12 @@ const DESIGN_SRC = './design/kbl-2.png'
 
 /* Constants */
 const canvas = document.getElementById('canvas')
-const ctx = canvas.getContext('2d')
+const ctx = window.ctx = canvas.getContext('2d')
 
 /* Init */
 loadDesign(imageData => {
-  checkDesign(imageData)
-  extractSkeleton()
+  imageData = checkDesign(imageData)
+  extractSkeleton(imageData)
 })
 
 /* Functions */

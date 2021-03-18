@@ -8,7 +8,6 @@ class ValueCounter {
     this.totalCount = 0
     this.valueCountMap = {}
     this.cache = {}
-    this.cacheId = null
   }
 
   addValue (value) {
@@ -24,16 +23,14 @@ class ValueCounter {
     this.clearCache()
   }
 
-  checkCache (key) {
-    return Object.keys(this.cache).includes(key)
-  }
-
-  getCache (key) {
-    return this.cache[key]
-  }
-
-  setCache (key, value) {
-    this.cache[key] = value
+  useCache (name, callback) {
+    if (Object.keys(this.cache).includes(name)) {
+      return this.cache[name]
+    } else {
+      const result = callback()
+      this.cache[name] = result
+      return result
+    }
   }
 
   clearCache () {

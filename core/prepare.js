@@ -2,7 +2,8 @@ import ColorCounter from '../utils/color-counter.js'
 import {rgbToHex} from '../utils/index.js'
 
 export function checkDesign (imageData) {
-  checkBoundary(imageData)
+  imageData = checkBoundary(imageData)
+  return imageData
 }
 
 function checkBoundary (imageData) {
@@ -12,23 +13,43 @@ function checkBoundary (imageData) {
 
   // Left Boundary
   let extraLineOnLeft = false
-  {}
+  {
+    const {
+      extraLineFound, index
+    } = checkExtraLine(imageData, 'left')
+    if (extraLineFound) {
+      extraLineOnLeft = true
+      imageData = correctImageData(imageData, 'left', index)
+    }
+  }
 
   // Right Boundary
   let extraLineOnRight = false
   if (!extraLineOnLeft) {
     const {
-      extraLineFound, count
-    } = checkExtraLineVertically(imageData, 'right')
-    console.log(extraLineFound, count)
+      extraLineFound, index
+    } = checkExtraLine(imageData, 'right')
+    if (extraLineFound) {
+      extraLineOnRight = true
+      imageData = correctImageData(imageData, 'right', index)
+    }
   }
 
   // Top Boundary
   let extraLineOnTop = false
   {}
+
+  if (
+    extraLineOnLeft ||
+    extraLineOnRight ||
+    extraLineOnTop
+  ) {
+    window.ctx.putImageData(imageData, 0, 0)
+  }
+  return imageData
 }
 
-function checkExtraLineVertically (imageData, direction) {
+function checkExtraLine (imageData, direction) {
   const {
     data, width, height
   } = imageData
@@ -75,7 +96,13 @@ function checkExtraLineVertically (imageData, direction) {
     lineDataGroup.push(lineData)
     count++
   }
-  return {extraLineFound, count}
+  if (extraLineFound) {
+    console.warn(`Extra lines found on ${direction} with ${count} pixels.`)
+  }
+  return {
+    extraLineFound,
+    index: count
+  }
 }
 
 function getLineDataByLoop (imageData, start, step, stop) {
@@ -90,4 +117,41 @@ function getLineDataByLoop (imageData, start, step, stop) {
     lineData.addValue(hex)
   }
   return lineData
+}
+
+function correctImageData (imageData, direction, index) {
+  const {
+    data, width, height
+  } = imageData
+  const newImageData = window.ctx.createImageData(width, height)
+  for (let i = 0; i < data.length; i += 4) {
+    const indexInRow = (i / 4) % width
+    const indexFromBehindInRow = width - 1 - indexInRow
+    const firstIndexInRow = Math.floor(i / 4 / width) * width
+    const lastIndexInRow = Math.ceil(i / 4 / width) * width
+    let j
+    switch (direction) {
+      case 'left': {
+        j = (
+          indexFromBehindInRow < index ?
+          lastIndexInRow * 4 :
+          i + index * 4
+        )
+        break
+      }
+      case 'right': {
+        j = (
+          indexInRow < index ?
+          firstIndexInRow * 4 :
+          i - index * 4
+        )
+        break
+      }
+    }
+    newImageData.data[i] = data[j]
+    newImageData.data[i + 1] = data[j + 1]
+    newImageData.data[i + 2] = data[j + 2]
+    newImageData.data[i + 3] = data[j + 3]
+  }
+  return newImageData
 }
