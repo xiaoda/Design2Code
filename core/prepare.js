@@ -7,9 +7,7 @@ export function checkDesign (imageData) {
 }
 
 function checkBoundary (imageData) {
-  const {
-    data, width, height
-  } = imageData
+  const {data, width, height} = imageData
 
   // Left Boundary
   let extraLineOnLeft = false
@@ -50,9 +48,7 @@ function checkBoundary (imageData) {
 }
 
 function checkExtraLine (imageData, direction) {
-  const {
-    data, width, height
-  } = imageData
+  const {data, width, height} = imageData
   const lineDataGroup = []
   let extraLineFound = false
   let count = 0
@@ -120,9 +116,7 @@ function getLineDataByLoop (imageData, start, step, stop) {
 }
 
 function correctImageData (imageData, direction, index) {
-  const {
-    data, width, height
-  } = imageData
+  const {data, width, height} = imageData
   const newImageData = window.ctx.createImageData(width, height)
   for (let i = 0; i < data.length; i += 4) {
     const indexInRow = (i / 4) % width

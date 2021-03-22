@@ -1,6 +1,6 @@
 import {
   DESIGN_WIDTH, DESIGN_SIZE_RATIO
-} from './core/constants.js'
+} from './utils/constants.js'
 import {checkDesign} from './core/prepare.js'
 import {extractSkeleton} from './core/structure.js'
 

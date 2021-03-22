@@ -1,4 +1,4 @@
-class ValueCounter {
+export default class ValueCounter {
   constructor () {
     this.init()
   }
@@ -37,5 +37,3 @@ class ValueCounter {
     this.cache = {}
   }
 }
-
-export default ValueCounter

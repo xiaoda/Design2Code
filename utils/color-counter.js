@@ -3,7 +3,7 @@ import {
   hexToRgb, rgbToHex
 } from './index.js'
 
-class ColorCounter extends ValueCounter {
+export default class ColorCounter extends ValueCounter {
   getAverage () {
     return this.useCache('average', _ => {
       const sum = {
@@ -82,5 +82,3 @@ class ColorCounter extends ValueCounter {
     })
   }
 }
-
-export default ColorCounter
