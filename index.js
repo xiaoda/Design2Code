@@ -6,6 +6,7 @@ import {extractSkeleton} from './core/structure.js'
 
 /* Config */
 const DESIGN_SRC = './design/kbl-2.png'
+const WECHAT_HEADER = window.WECHAT_HEADER = true
 
 /* Constants */
 const canvas = document.getElementById('canvas')
