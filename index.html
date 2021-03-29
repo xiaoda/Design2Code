@@ -5,10 +5,15 @@
   <title>Design to Code</title>
   <style>
     body {font-family: PingFangSC-Light;}
+    canvas {float: left; margin-right: 10px;}
   </style>
 </head>
 <body>
-  <canvas id="canvas"></canvas>
+  <div style="clear: both;">
+    <canvas id="design"></canvas>
+    <canvas id="process"></canvas>
+  </div>
+  <script src="./libs/geometry-utils.js"></script>
   <script type="module" src="index.js"></script>
 </body>
 </html>
