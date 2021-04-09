@@ -1,4 +1,7 @@
 import {sobel} from '../utils/edge-detection.js'
+import {
+  startProcess, endProcess
+} from '../utils/index.js'
 
 const PIXEL_GRAY_LIMIT = 5
 const PIXEL_DISTANCE_LIMIT = 3
@@ -7,17 +10,21 @@ export function extractSkeleton (imageData) {
   const edgeImageData = detectEdge(imageData)
   const rawStuff = extractRawStuff(edgeImageData)
   const stuff = processRawStuff(rawStuff)
+  console.log(stuff)
 }
 
 function detectEdge (imageData) {
+  startProcess('detectEdge')
   const edgeImageData = sobel(imageData)
   if (window.processCtx) {
     window.processCtx.putImageData(edgeImageData, 0, 0)
   }
+  endProcess('detectEdge')
   return edgeImageData
 }
 
 function extractRawStuff (imageData) {
+  startProcess('extractRawStuff')
   const {width, height, data} = imageData
   const allStuffByLine = []
   for (let i = 0; i < height; i++) {
@@ -51,14 +58,30 @@ function extractRawStuff (imageData) {
     }
     allStuffByLine[i] = lineStuff
   }
+  endProcess('extractRawStuff')
   return allStuffByLine
 }
 
 function processRawStuff (rawStuff) {
-  console.log(rawStuff)
+  startProcess('processRawStuff')
   const finalStuff = []
-  const activeStuff = []
+  let activeStuff = []
   rawStuff.forEach((lineStuff, i) => {
+    for (let j = activeStuff.length - 1; j >= 0; j--) {
+      const oneActiveStuff = activeStuff[j]
+      let isStillActive = false
+      let start = i - PIXEL_DISTANCE_LIMIT
+      if (start < 0) start = 0
+      const stop = i
+      for (let k = start; k < stop; k++) {
+        if (isStillActive) break
+        isStillActive = Boolean(oneActiveStuff[k].length)
+      }
+      if (!isStillActive) {
+        finalStuff.push(oneActiveStuff)
+        activeStuff.splice(j, 1)
+      }
+    }
     const activeStuffExisted = Boolean(activeStuff.length)
     const activeStuffConnections = []
     lineStuff.forEach((singleStuff, j) => {
@@ -74,7 +97,7 @@ function processRawStuff (rawStuff) {
             oneActiveStuff[l].forEach((singleActiveStuff, m) => {
               if (connected) return
               connected = checkShareRange(
-                singleStuff, singleActiveStuff, PIXEL_DISTANCE_LIMIT
+                PIXEL_DISTANCE_LIMIT, singleStuff, singleActiveStuff
               )
             })
           }
@@ -87,34 +110,45 @@ function processRawStuff (rawStuff) {
         activeStuff.push(activeStuffToPush)
       }
     })
-    const hasConnections = activeStuffConnections
-      .some(connections => {
-        return connections.some(connected => connected)
-      })
-    if (hasConnections) {
-      const singleActiveMap = []
-      const activeSingleMap = []
-      activeStuffConnections.forEach((connections, j) => {
-        singleActiveMap[j] = []
-        connections.forEach((connected, k) => {
-          if (!activeSingleMap[k]) {
-            activeSingleMap[k] = []
-          }
-          if (connected) {
-            singleActiveMap[j].push(k)
-            activeSingleMap[k].push(j)
-          }
+    if (activeStuffExisted) {
+      const hasConnections = activeStuffConnections
+        .some(connections => {
+          return connections.some(connected => connected)
         })
-      })
-      const connectionsCombo = getConnectionsCombo(
-        activeSingleMap, singleActiveMap
-      )
+      if (hasConnections) {
+        const singleActiveMap = []
+        const activeSingleMap = []
+        activeStuffConnections.forEach((connections, j) => {
+          singleActiveMap[j] = []
+          connections.forEach((connected, k) => {
+            if (!activeSingleMap[k]) {
+              activeSingleMap[k] = []
+            }
+            if (connected) {
+              singleActiveMap[j].push(k)
+              activeSingleMap[k].push(j)
+            }
+          })
+        })
+        const connectionsCombo = getConnectionsCombo(
+          activeSingleMap, singleActiveMap
+        )
+        const newActiveStuff = connectionsCombo
+          .map(combo => mergeActiveSingleStuff(
+            activeStuff, lineStuff, combo, i
+          ))
+        activeStuff = newActiveStuff
+      }
     }
   })
+  if (activeStuff.length) {
+    finalStuff.push(...activeStuff)
+  }
+  endProcess('processRawStuff')
   return finalStuff
 }
 
-function checkShareRange (rangeA, rangeB, distance) {
+function checkShareRange (distance, rangeA, rangeB) {
   const halfDistance = distance / 2
   const correctedRangeA = Array(
     rangeA[0] - halfDistance,
@@ -134,19 +168,17 @@ function checkShareRange (rangeA, rangeB, distance) {
 function getConnectionsCombo (
   activeSingleMap, singleActiveMap
 ) {
-  console.log('activeSingleMap', activeSingleMap)
-  console.log('singleActiveMap', singleActiveMap)
   function getRelatives (active) {
     const activeGroup = [active]
     const singleGroup = []
     function loop (index) {
-      const singleGroup = activeSingleMap[index]
-      singleGroup.forEach(single => {
+      const tempSingleGroup = activeSingleMap[index]
+      tempSingleGroup.forEach(single => {
         if (!singleGroup.includes(single)) {
           singleGroup.push(single)
         }
-        const activeGroup = singleActiveMap[single]
-        activeGroup.forEach(active => {
+        const tempActiveGroup = singleActiveMap[single]
+        tempActiveGroup.forEach(active => {
           if (!activeGroup.includes(active)) {
             activeGroup.push(active)
             loop(active)
@@ -176,6 +208,72 @@ function getConnectionsCombo (
       }
     })
   }
-  console.log('combo', combo)
   return combo
+}
+
+function mergeActiveSingleStuff (
+  activeStuff, lineStuff, combo, lineIndex
+) {
+  const {
+    activeGroup, singleGroup
+  } = combo
+  const mergedStuff = []
+  for (let i = 0; i < activeStuff[0].length; i++) {
+    const tempRanges = []
+    activeGroup.forEach(index => {
+      tempRanges.push(...activeStuff[index][i])
+    })
+    const currentlineStuff = mergeRanges(
+      PIXEL_DISTANCE_LIMIT, ...tempRanges
+    )
+    mergedStuff[i] = currentlineStuff
+  }
+  const latestLineStuff = mergeRanges(
+    PIXEL_DISTANCE_LIMIT,
+    ...singleGroup.map(single => lineStuff[single])
+  )
+  mergedStuff[lineIndex] = latestLineStuff
+  return mergedStuff
+}
+
+function mergeRanges (distance, ...ranges) {
+  let maxRangeBorder = 0
+  ranges.forEach(range => {
+    if (range[1] > maxRangeBorder) {
+      maxRangeBorder = range[1]
+    }
+  })
+  const rawRanges = Array(maxRangeBorder).fill(false)
+  ranges.forEach(range => {
+    for (let i = range[0]; i <= range[1]; i++) {
+      rawRanges[i] = true
+    }
+  })
+  const mergedRanges = []
+  let tempRange = []
+  rawRanges.forEach((range, index) => {
+    if (range) {
+      tempRange.push(index)
+    } else {
+      if (tempRange.length) {
+        const lastTempRangeIndex = tempRange[tempRange.length - 1]
+        if (index - lastTempRangeIndex > distance) {
+          const rangeToPush = [
+            tempRange[0],
+            tempRange[tempRange.length - 1]
+          ]
+          mergedRanges.push(rangeToPush)
+          tempRange = []
+        }
+      }
+    }
+  })
+  if (tempRange.length) {
+    const rangeToPush = [
+      tempRange[0],
+      tempRange[tempRange.length - 1]
+    ]
+    mergedRanges.push(rangeToPush)
+  }
+  return mergedRanges
 }

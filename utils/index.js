@@ -1,3 +1,11 @@
+export function startProcess (name) {
+  console.info(`>>> ${name} start`)
+}
+
+export function endProcess (name) {
+  console.info(`>>> ${name} end`)
+}
+
 export function rgbToHex (r, g, b) {
   return `${decToHex(r)}${decToHex(g)}${decToHex(b)}`
 }

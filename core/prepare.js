@@ -1,5 +1,7 @@
 import ColorCounter from '../utils/color-counter.js'
-import {rgbToHex} from '../utils/index.js'
+import {
+  startProcess, endProcess, rgbToHex
+} from '../utils/index.js'
 
 export function checkDesign (imageData) {
   imageData = checkBoundary(imageData)
@@ -7,6 +9,7 @@ export function checkDesign (imageData) {
 }
 
 function checkBoundary (imageData) {
+  startProcess('checkBoundary')
   const {data, width, height} = imageData
 
   // Left Boundary
@@ -44,6 +47,7 @@ function checkBoundary (imageData) {
   ) {
     window.ctx.putImageData(imageData, 0, 0)
   }
+  endProcess('checkBoundary')
   return imageData
 }
 
