@@ -3,14 +3,15 @@ import {
   startProcess, endProcess
 } from '../utils/index.js'
 
-const PIXEL_GRAY_LIMIT = 5
-const PIXEL_DISTANCE_LIMIT = 3
+const PIXEL_GRAY_LIMIT = 10
+const PIXEL_DISTANCE_LIMIT = 5
 
 export function extractSkeleton (imageData) {
   const edgeImageData = detectEdge(imageData)
   const rawStuff = extractRawStuff(edgeImageData)
-  const stuff = processRawStuff(rawStuff)
-  console.log(stuff)
+  const processedStuff = processRawStuff(rawStuff)
+  const detailedStuff = generateDetailedStuff(processedStuff)
+  highlightStuff(edgeImageData, detailedStuff)
 }
 
 function detectEdge (imageData) {
@@ -64,7 +65,7 @@ function extractRawStuff (imageData) {
 
 function processRawStuff (rawStuff) {
   startProcess('processRawStuff')
-  const finalStuff = []
+  const processedStuff = []
   let activeStuff = []
   rawStuff.forEach((lineStuff, i) => {
     for (let j = activeStuff.length - 1; j >= 0; j--) {
@@ -78,7 +79,7 @@ function processRawStuff (rawStuff) {
         isStillActive = Boolean(oneActiveStuff[k].length)
       }
       if (!isStillActive) {
-        finalStuff.push(oneActiveStuff)
+        processedStuff.push(oneActiveStuff)
         activeStuff.splice(j, 1)
       }
     }
@@ -142,10 +143,10 @@ function processRawStuff (rawStuff) {
     }
   })
   if (activeStuff.length) {
-    finalStuff.push(...activeStuff)
+    processedStuff.push(...activeStuff)
   }
   endProcess('processRawStuff')
-  return finalStuff
+  return processedStuff
 }
 
 function checkShareRange (distance, rangeA, rangeB) {
@@ -276,4 +277,68 @@ function mergeRanges (distance, ...ranges) {
     mergedRanges.push(rangeToPush)
   }
   return mergedRanges
+}
+
+function generateDetailedStuff (processedStuff) {
+  startProcess('processedStuff')
+  const detailedStuff = []
+  processedStuff.forEach((stuff, i) => {
+    let top, bottom, left, right
+    stuff.forEach((lineStuff, j) => {
+      if (lineStuff.length) {
+        const firstStuff = lineStuff[0]
+        const lastStuff = lineStuff[lineStuff.length - 1]
+        if (!top && top !== 0) top = j
+        bottom = j
+        if (!left && left !== 0) left = firstStuff[0]
+        if (!right && right !== 0) right = lastStuff[1]
+        if (firstStuff[0] < left) left = firstStuff[0]
+        if (lastStuff[1] > right) right = lastStuff[1]
+      }
+    })
+    const stuffToPush = {
+      top, bottom, left, right
+    }
+    detailedStuff.push(stuffToPush)
+  })
+  endProcess('processedStuff')
+  return detailedStuff
+}
+
+function highlightStuff (edgeImageData, detailedStuff) {
+  startProcess('highlightStuff')
+  const {width, height, data} = edgeImageData
+  function highlight (index) {
+    data[index] = data[index + 1] = 255
+    data[index + 2] = 0
+  }
+  detailedStuff.forEach(stuff => {
+    const {
+      top, bottom, left, right
+    } = stuff
+    for (
+      let i = top * width + left;
+      i < top * width + right;
+      i++
+    ) highlight(i * 4)
+    for (
+      let i = bottom * width + left;
+      i < bottom * width + right;
+      i++
+    ) highlight(i * 4)
+    for (
+      let i = top * width + left;
+      i < bottom * width + left;
+      i += width
+    ) highlight(i * 4)
+    for (
+      let i = top * width + right;
+      i < bottom * width + right;
+      i += width
+    ) highlight(i * 4)
+  })
+  if (window.processCtx) {
+    window.processCtx.putImageData(edgeImageData, 0, 0)
+  }
+  endProcess('highlightStuff')
 }

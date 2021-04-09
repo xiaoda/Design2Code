@@ -1,9 +1,17 @@
+const timeRecorder = {}
+
 export function startProcess (name) {
-  console.info(`>>> ${name} start`)
+  const startTimeStamp = new Date().getTime()
+  timeRecorder[name] = startTimeStamp
+  console.info(`>>> ${name} START`)
 }
 
 export function endProcess (name) {
-  console.info(`>>> ${name} end`)
+  const endTimeStamp = new Date().getTime()
+  const startTimeStamp = timeRecorder[name]
+  delete timeRecorder[name]
+  const milliseconds = endTimeStamp - startTimeStamp
+  console.info(`>>> ${name} END within ${milliseconds}ms`)
 }
 
 export function rgbToHex (r, g, b) {
