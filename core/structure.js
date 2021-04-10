@@ -3,8 +3,8 @@ import {
   startProcess, endProcess
 } from '../utils/index.js'
 
-const PIXEL_GRAY_LIMIT = 10
-const PIXEL_DISTANCE_LIMIT = 5
+const PIXEL_GRAY_LIMIT = 5
+const PIXEL_DISTANCE_LIMIT = 4
 
 export function extractSkeleton (imageData) {
   const edgeImageData = detectEdge(imageData)
@@ -309,8 +309,8 @@ function highlightStuff (edgeImageData, detailedStuff) {
   startProcess('highlightStuff')
   const {width, height, data} = edgeImageData
   function highlight (index) {
-    data[index] = data[index + 1] = 255
-    data[index + 2] = 0
+    data[index] = 0
+    data[index + 1] = data[index + 2] = 255
   }
   detailedStuff.forEach(stuff => {
     const {

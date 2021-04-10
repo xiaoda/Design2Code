@@ -16,8 +16,9 @@ const processCtx =
 window.processCtx = processCanvas.getContext('2d')
 
 /* Init */
-loadDesign(imageData => {
+loadDesign((imageData, designSizeRatio) => {
   imageData = checkDesign(imageData)
+  initAssistance(imageData, designSizeRatio)
   extractSkeleton(imageData)
 })
 
@@ -39,7 +40,34 @@ function loadDesign (callback) {
     processCanvas.style.height = `${height / designSizeRatio}px`
     ctx.drawImage(this, 0, 0)
     const imageData = ctx.getImageData(0, 0, width, height)
-    callback(imageData)
+    callback(imageData, designSizeRatio)
   }
   image.src = DESIGN_SRC
+}
+
+function initAssistance (imageData, designSizeRatio) {
+  function highlight (data, index) {
+    data[index] = 255
+    data[index + 1] = 127
+    data[index + 2] = 0
+  }
+
+  canvas.addEventListener('click', event => {
+    let {offsetX: x, offsetY: y} = event
+    x = Math.round(x) * designSizeRatio
+    y = Math.round(y) * designSizeRatio
+    const {width, height} = imageData
+    const focusImageData = ctx.createImageData(width, height)
+    focusImageData.data.set(imageData.data)
+    const {data} = focusImageData
+    for (let i = width * y; i < width * (y + 1); i++) {
+      highlight(data, i * 4)
+    }
+    for (let i = x; i < width * height; i += width) {
+      highlight(data, i * 4)
+    }
+    ctx.putImageData(focusImageData, 0, 0)
+    document.getElementById('positionX').innerText = x
+    document.getElementById('positionY').innerText = y
+  })
 }

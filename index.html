@@ -5,13 +5,20 @@
   <title>Design to Code</title>
   <style>
     body {font-family: PingFangSC-Light;}
-    canvas {float: left; margin-right: 10px;}
+    canvas {float: left; margin-right: 8px;}
+    .block {overflow: auto; margin-bottom: 8px;}
   </style>
 </head>
 <body>
-  <div style="clear: both;">
+  <div class="block">
     <canvas id="design"></canvas>
     <canvas id="process"></canvas>
+  </div>
+  <div class="block">
+    Position: [
+      <span id="positionX"></span>,
+      <span id="positionY"></span>
+    ]
   </div>
   <script src="./libs/geometry-utils.js"></script>
   <script type="module" src="index.js"></script>
