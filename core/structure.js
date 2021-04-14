@@ -67,6 +67,7 @@ function processRawStuff (rawStuff) {
   startProcess('processRawStuff')
   const processedStuff = []
   let activeStuff = []
+  let newActiveStuff = []
   rawStuff.forEach((lineStuff, i) => {
     for (let j = activeStuff.length - 1; j >= 0; j--) {
       const oneActiveStuff = activeStuff[j]
@@ -105,6 +106,12 @@ function processRawStuff (rawStuff) {
           connections.push(connected)
         })
         activeStuffConnections.push(connections)
+        const hasConnections = connections.some(connected => connected)
+        if (!hasConnections) {
+          const newActiveStuffToPush = Array(rawStuff.length).fill([])
+          newActiveStuffToPush[i] = [singleStuff]
+          newActiveStuff.push(newActiveStuffToPush)
+        }
       } else {
         const activeStuffToPush = Array(rawStuff.length).fill([])
         activeStuffToPush[i] = [singleStuff]
@@ -134,11 +141,14 @@ function processRawStuff (rawStuff) {
         const connectionsCombo = getConnectionsCombo(
           activeSingleMap, singleActiveMap
         )
-        const newActiveStuff = connectionsCombo
+        const tempActiveStuff = connectionsCombo
           .map(combo => mergeActiveSingleStuff(
             activeStuff, lineStuff, combo, i
           ))
-        activeStuff = newActiveStuff
+        activeStuff = [
+          ...tempActiveStuff,
+          ...newActiveStuff
+        ]
       }
     }
   })
@@ -280,7 +290,7 @@ function mergeRanges (distance, ...ranges) {
 }
 
 function generateDetailedStuff (processedStuff) {
-  startProcess('processedStuff')
+  startProcess('generateDetailedStuff')
   const detailedStuff = []
   processedStuff.forEach((stuff, i) => {
     let top, bottom, left, right
@@ -301,7 +311,7 @@ function generateDetailedStuff (processedStuff) {
     }
     detailedStuff.push(stuffToPush)
   })
-  endProcess('processedStuff')
+  endProcess('generateDetailedStuff')
   return detailedStuff
 }
 
