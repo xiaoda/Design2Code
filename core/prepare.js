@@ -3,6 +3,10 @@ import {
   startProcess, endProcess, rgbToHex
 } from '../utils/index.js'
 
+const PIXEL_EXTRA_LINE_LIMIT = 4
+const VARIANCE_MIN_LIMIT = 1
+const VARIANCE_MAX_LIMIT = 100
+
 export function checkDesign (imageData) {
   imageData = checkBoundary(imageData)
   return imageData
@@ -58,7 +62,7 @@ function checkExtraLine (imageData, direction) {
   let count = 0
   while (
     !extraLineFound &&
-    count < 3
+    count < PIXEL_EXTRA_LINE_LIMIT
   ) {
     const start = (
       direction === 'left' ?
@@ -80,13 +84,13 @@ function checkExtraLine (imageData, direction) {
       const varianceOfLines = lineData
         .getVarianceFromAnother(lastLineData)
       const conditionA = (
-        lastLineVariance < 1 &&
-        lineVariance > 100
+        lastLineVariance < VARIANCE_MIN_LIMIT &&
+        lineVariance > VARIANCE_MAX_LIMIT
       )
       const conditionB = (
-        lastLineVariance < 1 &&
-        lineVariance < 1 &&
-        varianceOfLines > 100
+        lastLineVariance < VARIANCE_MIN_LIMIT &&
+        lineVariance < VARIANCE_MIN_LIMIT &&
+        varianceOfLines > VARIANCE_MAX_LIMIT
       )
       if (conditionA || conditionB) {
         extraLineFound = true

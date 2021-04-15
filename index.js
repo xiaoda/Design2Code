@@ -46,20 +46,33 @@ function loadDesign (callback) {
 }
 
 function initAssistance (imageData, designSizeRatio) {
-  function highlight (data, index) {
-    data[index] = 255
-    data[index + 1] = 127
-    data[index + 2] = 0
+  const focusPosition = {
+    x: null, y: null
   }
 
-  canvas.addEventListener('click', event => {
-    let {offsetX: x, offsetY: y} = event
-    x = Math.round(x) * designSizeRatio
-    y = Math.round(y) * designSizeRatio
+  function focus (x, y) {
+    function highlight (data, index) {
+      data[index] = 255
+      data[index + 1] = 127
+      data[index + 2] = 0
+    }
+
     const {width, height} = imageData
+    x = GeometryUtils.clamp(0, width, x)
+    y = GeometryUtils.clamp(0, height, y)
+    const {x: latestX, y: latestY} = focusPosition
+    if (x === latestX && y === latestY) return
+    focusPosition.x = x
+    focusPosition.y = y
     const focusImageData = ctx.createImageData(width, height)
-    focusImageData.data.set(imageData.data)
     const {data} = focusImageData
+    data.set(imageData.data)
+    const index = (y * width + x) * 4
+    const color = {
+      r: data[index],
+      g: data[index + 1],
+      b: data[index + 2]
+    }
     for (let i = width * y; i < width * (y + 1); i++) {
       highlight(data, i * 4)
     }
@@ -67,7 +80,45 @@ function initAssistance (imageData, designSizeRatio) {
       highlight(data, i * 4)
     }
     ctx.putImageData(focusImageData, 0, 0)
-    document.getElementById('positionX').innerText = x
-    document.getElementById('positionY').innerText = y
+    document.getElementById('focusPositionX').innerText = x
+    document.getElementById('focusPositionY').innerText = y
+    document.getElementById('focusColorR').innerText = color.r
+    document.getElementById('focusColorG').innerText = color.g
+    document.getElementById('focusColorB').innerText = color.b
+  }
+
+  canvas.addEventListener('click', event => {
+    const {offsetX, offsetY} = event
+    const x = Math.floor(offsetX * designSizeRatio)
+    const y = Math.floor(offsetY * designSizeRatio)
+    focus(x, y)
+  })
+
+  document.addEventListener('keydown', event => {
+    const {code} = event
+    const arrowKeys = [
+      'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'
+    ]
+    if (
+      arrowKeys.includes(code) &&
+      focusPosition.x !== null
+    ) {
+      let {x, y} = focusPosition
+      switch (code) {
+        case 'ArrowLeft':
+          x--
+          break
+        case 'ArrowRight':
+          x++
+          break
+        case 'ArrowUp':
+          y--
+          break
+        case 'ArrowDown':
+          y++
+          break
+      }
+      focus(x, y)
+    }
   })
 }

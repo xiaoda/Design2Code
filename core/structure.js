@@ -3,8 +3,14 @@ import {
   startProcess, endProcess
 } from '../utils/index.js'
 
-const PIXEL_GRAY_LIMIT = 5
+const PIXEL_GRAY_LIMIT = 10
 const PIXEL_DISTANCE_LIMIT = 4
+const PIXEL_STUFF_LIMIT = 4
+const PIXEL_BOUNDARY_LIMIT = 10
+const RATIO_FULL_LIMIT = .95
+const TYPE_COMMON = 'common'
+const TYPE_BOUNDARY = 'boundary'
+const TYPE_BLOCK = 'block'
 
 export function extractSkeleton (imageData) {
   const edgeImageData = detectEdge(imageData)
@@ -149,6 +155,7 @@ function processRawStuff (rawStuff) {
           ...tempActiveStuff,
           ...newActiveStuff
         ]
+        newActiveStuff = []
       }
     }
   })
@@ -294,25 +301,61 @@ function generateDetailedStuff (processedStuff) {
   const detailedStuff = []
   processedStuff.forEach((stuff, i) => {
     let top, bottom, left, right
+    const features = []
     stuff.forEach((lineStuff, j) => {
       if (lineStuff.length) {
         const firstStuff = lineStuff[0]
         const lastStuff = lineStuff[lineStuff.length - 1]
         if (!top && top !== 0) top = j
-        bottom = j
         if (!left && left !== 0) left = firstStuff[0]
         if (!right && right !== 0) right = lastStuff[1]
         if (firstStuff[0] < left) left = firstStuff[0]
         if (lastStuff[1] > right) right = lastStuff[1]
+        bottom = j
+        const range = lastStuff[1] - firstStuff[0] + 1
+        const total = getTotalCountFromLineStuff(lineStuff)
+        const feature = {range, total}
+        features.push(feature)
       }
     })
+    const height = bottom - top + 1
+    const width = right - left + 1
+    if (
+      width < PIXEL_STUFF_LIMIT &&
+      height < PIXEL_STUFF_LIMIT
+    ) return 'Invalid stuff'
+    let type = TYPE_COMMON
+    const firstFeature = features[0]
+    const lastFeature = features[features.length - 1]
+    const topCoverage = firstFeature.total / width
+    const bottomCoverage = lastFeature.total / width
+    if (
+      height < PIXEL_BOUNDARY_LIMIT &&
+      topCoverage > RATIO_FULL_LIMIT &&
+      bottomCoverage > RATIO_FULL_LIMIT
+    ) type = TYPE_BOUNDARY
+    else if (
+      topCoverage > RATIO_FULL_LIMIT &&
+      bottomCoverage > RATIO_FULL_LIMIT &&
+      features.every(({range}) => range / width > RATIO_FULL_LIMIT)
+    ) type = TYPE_BLOCK
     const stuffToPush = {
-      top, bottom, left, right
+      top, bottom, left, right,
+      width, height, type
     }
     detailedStuff.push(stuffToPush)
   })
   endProcess('generateDetailedStuff')
   return detailedStuff
+}
+
+function getTotalCountFromLineStuff (lineStuff) {
+  let totalCount = 0
+  lineStuff.forEach(stuff => {
+    const count = stuff[1] - stuff[0] + 1
+    totalCount += count
+  })
+  return totalCount
 }
 
 function highlightStuff (edgeImageData, detailedStuff) {
