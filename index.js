@@ -2,7 +2,8 @@ import {
   DESIGN_WIDTH, DESIGN_SIZE_RATIO
 } from './utils/constants.js'
 import {checkDesign} from './core/prepare.js'
-import {extractSkeleton} from './core/structure.js'
+import {extractStuff} from './core/stuff.js'
+import {extractStructure} from './core/structure.js'
 
 /* Config */
 const DESIGN_SRC = './design/kbl-2.png'
@@ -19,7 +20,8 @@ window.processCtx = processCanvas.getContext('2d')
 loadDesign((imageData, designSizeRatio) => {
   imageData = checkDesign(imageData)
   initAssistance(imageData, designSizeRatio)
-  extractSkeleton(imageData)
+  const detailedStuff = extractStuff(imageData)
+  extractStructure(detailedStuff)
 })
 
 /* Functions */
@@ -97,7 +99,8 @@ function initAssistance (imageData, designSizeRatio) {
   document.addEventListener('keydown', event => {
     const {code} = event
     const arrowKeys = [
-      'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'
+      'ArrowLeft', 'ArrowRight',
+      'ArrowUp', 'ArrowDown'
     ]
     if (
       arrowKeys.includes(code) &&

@@ -13,7 +13,7 @@ export function checkDesign (imageData) {
 }
 
 function checkBoundary (imageData) {
-  startProcess('checkBoundary')
+  startProcess('checkBoundary', _ => console.info(_))
   const {data, width, height} = imageData
 
   // Left Boundary
@@ -51,7 +51,7 @@ function checkBoundary (imageData) {
   ) {
     window.ctx.putImageData(imageData, 0, 0)
   }
-  endProcess('checkBoundary')
+  endProcess('checkBoundary', _ => console.info(_))
   return imageData
 }
 

@@ -1,17 +1,21 @@
 const timeRecorder = {}
 
-export function startProcess (name) {
+export function startProcess (name, callback) {
   const startTimeStamp = new Date().getTime()
   timeRecorder[name] = startTimeStamp
-  console.info(`>>> ${name} START`)
+  const text = `>>> ${name} START`
+  if (callback) callback(text)
+  else console.info(text)
 }
 
-export function endProcess (name) {
+export function endProcess (name, callback) {
   const endTimeStamp = new Date().getTime()
   const startTimeStamp = timeRecorder[name]
   delete timeRecorder[name]
   const milliseconds = endTimeStamp - startTimeStamp
-  console.info(`>>> ${name} END within ${milliseconds}ms`)
+  const text = `>>> ${name} END within ${milliseconds}ms`
+  if (callback) callback(text)
+  else console.info(text)
 }
 
 export function rgbToHex (r, g, b) {
