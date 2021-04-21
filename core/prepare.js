@@ -1,7 +1,7 @@
-import ColorCounter from '../utils/color-counter.js'
 import {
   startProcess, endProcess, rgbToHex
 } from '../utils/index.js'
+import ColorCounter from '../utils/color-counter.js'
 
 const PIXEL_EXTRA_LINE_LIMIT = 4
 const VARIANCE_MIN_LIMIT = 1

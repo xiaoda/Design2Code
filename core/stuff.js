@@ -1,16 +1,16 @@
-import {sobel} from '../utils/edge-detection.js'
 import {
   startProcess, endProcess
 } from '../utils/index.js'
+import {sobel} from '../utils/edge-detection.js'
 
 const GRAY_PIXEL_LIMIT = 10
 const PIXEL_DISTANCE_LIMIT = 6
 const PIXEL_STUFF_LIMIT = 6
 const PIXEL_BOUNDARY_LIMIT = 10
 const RATIO_FULL_LIMIT = .95
-const TYPE_COMMON = 'common'
-const TYPE_BOUNDARY = 'boundary'
-const TYPE_BLOCK = 'block'
+export const TYPE_STUFF_COMMON = 'common'
+export const TYPE_STUFF_BOUNDARY = 'boundary'
+export const TYPE_STUFF_BLOCK = 'block'
 
 export function extractStuff (imageData) {
   const edgeImageData = detectEdge(imageData)
@@ -256,12 +256,9 @@ function mergeActiveSingleStuff (
 }
 
 function mergeRanges (distance, ...ranges) {
-  let maxRangeBorder = 0
-  ranges.forEach(range => {
-    if (range[1] > maxRangeBorder) {
-      maxRangeBorder = range[1]
-    }
-  })
+  const maxRangeBorder = Math.max(
+    ...ranges.map(range => range[1]), 0
+  )
   const rawRanges = Array(maxRangeBorder).fill(false)
   ranges.forEach(range => {
     for (let i = range[0]; i <= range[1]; i++) {
@@ -330,17 +327,17 @@ function generateDetailedStuff (processedStuff) {
     const topCoverage = firstFeature.total / width
     const bottomCoverage = lastFeature.total / width
     const processedStuffIndex = i
-    let type = TYPE_COMMON
+    let type = TYPE_STUFF_COMMON
     if (
       height < PIXEL_BOUNDARY_LIMIT &&
       topCoverage > RATIO_FULL_LIMIT &&
       bottomCoverage > RATIO_FULL_LIMIT
-    ) type = TYPE_BOUNDARY
+    ) type = TYPE_STUFF_BOUNDARY
     else if (
       topCoverage > RATIO_FULL_LIMIT &&
       bottomCoverage > RATIO_FULL_LIMIT &&
       features.every(({range}) => range / width > RATIO_FULL_LIMIT)
-    ) type = TYPE_BLOCK
+    ) type = TYPE_STUFF_BLOCK
     const stuffToPush = {
       top, bottom, left, right,
       width, height, type, processedStuffIndex
