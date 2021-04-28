@@ -9,6 +9,10 @@ import {
 
 const PIXEL_ERROR_LIMIT = 4
 const PIXEL_BORDER_LIMIT = 2
+const PIXEL_VERTICAL_ALIGNED = 8
+const PIXEL_VERTICAL_DISTANCE = 40
+const PIXEL_HORIZONTAL_ALIGNED = 8
+const PIXEL_HORIZONTAL_DISTANCE = 30
 const TYPE_STRUCTURE_BLOCK = 'block'
 
 export function extractStructure (detailedStuff) {
@@ -17,7 +21,6 @@ export function extractStructure (detailedStuff) {
 
 function analyzeStructure (detailedStuff) {
   startProcess('analyzeStructure', _ => console.info(_))
-  console.log('detailedStuff', detailedStuff)
   const structure = recursivelyAnalyze(detailedStuff)
   console.log('structure', structure)
   endProcess('analyzeStructure', _ => console.info(_))
@@ -83,7 +86,8 @@ function recursivelyAnalyze (stuff, area = {}) {
       structure.push(structureItem)
     }
   } else {
-    const mergedStuff = mergeRelavantStuff(stuff)
+    const mergedStuff = mergeRelevantStuff(stuff)
+    console.log('mergedStuff', mergedStuff)
   }
   return structure
 }
@@ -126,17 +130,153 @@ function filterStuffInArea (stuff, area) {
     const {
       top, bottom, left, right
     } = stuffItem
-    const verticallyCoincident = (
+    const verticalCoincident = (
       (top - areaBottom) * (bottom - areaTop)
-    ) < 0
-    const horizontallyCoincident = (
+    ) <= 0
+    const horizontalCoincident = (
       (left - areaRight) * (right - areaLeft)
-    ) < 0
-    return verticallyCoincident && horizontallyCoincident
+    ) <= 0
+    return (
+      verticalCoincident &&
+      horizontalCoincident
+    )
   })
   return stuffInArea
 }
 
-function mergeRelavantStuff (stuff) {
- // todo
+function mergeRelevantStuff (stuff) {
+  const relevanceMap = Array(stuff.length)
+  for (let i = 0; i < relevanceMap.length; i++) {
+    relevanceMap[i] = []
+  }
+  for (let i = 0; i < stuff.length - 1; i++) {
+    const currentStuff = stuff[i]
+    const restStuff = stuff.slice(i + 1)
+    for (let j = 0; j < restStuff.length; j++) {
+      const anotherStuff = restStuff[j]
+      const relevance = checkStuffRelevance(
+        currentStuff, anotherStuff
+      )
+      if (relevance) {
+        const index = i + j + 1
+        relevanceMap[i].push(index)
+        relevanceMap[index].push(i)
+      }
+    }
+  }
+  const formattedRelevanceMap = formatRelevanceMap(
+    relevanceMap
+  )
+  const mergedStuff = []
+  formattedRelevanceMap.forEach(group => {
+    let top, bottom, left, right
+    const detailedStuffIds = []
+    group.forEach((stuffIndex, index) => {
+      const tempStuff = stuff[stuffIndex]
+      if (index) {
+        if (tempStuff.top < top) top = tempStuff.top
+        if (tempStuff.bottom > bottom) bottom = tempStuff.bottom
+        if (tempStuff.left < left) left = tempStuff.left
+        if (tempStuff.right < right) right = tempStuff.right
+      } else {
+        top = tempStuff.top
+        bottom = tempStuff.bottom
+        left = tempStuff.left
+        right = tempStuff.right
+      }
+      detailedStuffIds.push(tempStuff.id)
+    })
+    const width = right - left + 1
+    const height = bottom - top + 1
+    const newStuff = {
+      top, bottom, left, right,
+      width, height, detailedStuffIds
+    }
+    mergedStuff.push(newStuff)
+  })
+  return mergedStuff
+}
+
+function checkStuffRelevance (stuffA, stuffB) {
+  let relevance = false
+  const verticalContained = (
+    (stuffA.top - stuffB.top) *
+    (stuffA.bottom - stuffB.bottom)
+  ) <= 0
+  const verticalDistance = (
+    verticalContained ? 0 :
+    Math.min(
+      Math.abs(stuffA.top - stuffB.bottom),
+      Math.abs(stuffA.bottom - stuffB.top)
+    )
+  )
+  const verticalAligned = (
+    Math.abs(stuffA.left - stuffB.left) < PIXEL_VERTICAL_ALIGNED
+  )
+  const horizontalContained = (
+    (stuffA.left - stuffB.left) *
+    (stuffA.right - stuffB.right)
+  ) <= 0
+  const horizontalDistance = (
+    horizontalContained ? 0 :
+    Math.min(
+      Math.abs(stuffA.left - stuffB.right),
+      Math.abs(stuffA.right - stuffB.left)
+    )
+  )
+  const horizontalAligned = (
+    Math.abs(stuffA.top - stuffB.top) < PIXEL_HORIZONTAL_ALIGNED &&
+    Math.abs(stuffA.bottom - stuffB.bottom) < PIXEL_HORIZONTAL_ALIGNED
+  )
+  if (
+    verticalContained &&
+    horizontalContained
+  ) relevance = true
+  else if (
+    verticalAligned &&
+    verticalDistance > 0 &&
+    verticalDistance < PIXEL_VERTICAL_DISTANCE
+  ) relevance = true
+  else if (
+    horizontalAligned &&
+    horizontalDistance > 0 &&
+    horizontalDistance < PIXEL_HORIZONTAL_DISTANCE
+  ) relevance = true
+  return relevance
+}
+
+function formatRelevanceMap (relevanceMap) {
+  const formattedRelevanceMap = []
+
+  function getRelevantGroup (index) {
+    const lock = []
+    function loop (i) {
+      if (lock.includes(i)) return []
+      lock.push(i)
+      const group = [i]
+      const relevantIndexes = relevanceMap[i]
+      relevantIndexes.forEach(j => {
+        const relevantGroup = loop(j)
+        relevantGroup.forEach(k => {
+          if (group.includes(k)) return
+          group.push(k)
+        })
+      })
+      return group
+    }
+    const group = loop(index)
+    return group
+  }
+
+  for (let i = 0; i < relevanceMap.length; i++) {
+    const alreadyExisted = (
+      formattedRelevanceMap.findIndex(group => {
+        return group.includes(i)
+      })
+    ) > -1
+    if (alreadyExisted) continue
+    const group = getRelevantGroup(i)
+    formattedRelevanceMap.push(group)
+  }
+  return formattedRelevanceMap
 }

@@ -1,5 +1,6 @@
 import {
-  startProcess, endProcess
+  startProcess, endProcess,
+  generateRandomString
 } from '../utils/index.js'
 import {sobel} from '../utils/edge-detection.js'
 
@@ -115,12 +116,18 @@ function processRawStuff (rawStuff) {
         activeStuffConnections.push(connections)
         const hasConnections = connections.some(connected => connected)
         if (!hasConnections) {
-          const newActiveStuffToPush = Array(rawStuff.length).fill([])
+          const newActiveStuffToPush = Array(rawStuff.length)
+          for (let k = 0; k < newActiveStuffToPush.length; k++) {
+            newActiveStuffToPush[k] = []
+          }
           newActiveStuffToPush[i] = [singleStuff]
           newActiveStuff.push(newActiveStuffToPush)
         }
       } else {
-        const activeStuffToPush = Array(rawStuff.length).fill([])
+        const activeStuffToPush = Array(rawStuff.length)
+        for (let k = 0; k < activeStuffToPush.length; k++) {
+          activeStuffToPush[k] = []
+        }
         activeStuffToPush[i] = [singleStuff]
         activeStuff.push(activeStuffToPush)
       }
@@ -298,6 +305,8 @@ function generateDetailedStuff (processedStuff) {
   startProcess('generateDetailedStuff', _ => console.info(_))
   const detailedStuff = []
   processedStuff.forEach((stuff, i) => {
+    const id = generateRandomString('ds')
+    const processedStuffIndex = i
     let top, bottom, left, right
     const features = []
     stuff.forEach((lineStuff, j) => {
@@ -326,7 +335,6 @@ function generateDetailedStuff (processedStuff) {
     const lastFeature = features[features.length - 1]
     const topCoverage = firstFeature.total / width
     const bottomCoverage = lastFeature.total / width
-    const processedStuffIndex = i
     let type = TYPE_STUFF_COMMON
     if (
       height < PIXEL_BOUNDARY_LIMIT &&
@@ -339,8 +347,9 @@ function generateDetailedStuff (processedStuff) {
       features.every(({range}) => range / width > RATIO_FULL_LIMIT)
     ) type = TYPE_STUFF_BLOCK
     const stuffToPush = {
+      id, processedStuffIndex,
       top, bottom, left, right,
-      width, height, type, processedStuffIndex
+      width, height, type
     }
     detailedStuff.push(stuffToPush)
   })
