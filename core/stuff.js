@@ -9,6 +9,7 @@ const PIXEL_DISTANCE_LIMIT = 6
 const PIXEL_STUFF_LIMIT = 6
 const PIXEL_BOUNDARY_LIMIT = 10
 const RATIO_FULL_LIMIT = .95
+
 export const TYPE_STUFF_COMMON = 'common'
 export const TYPE_STUFF_BOUNDARY = 'boundary'
 export const TYPE_STUFF_BLOCK = 'block'
@@ -262,7 +263,7 @@ function mergeActiveSingleStuff (
   return mergedStuff
 }
 
-function mergeRanges (distance, ...ranges) {
+export function mergeRanges (distance, ...ranges) {
   const maxRangeBorder = Math.max(
     ...ranges.map(range => range[1]), 0
   )

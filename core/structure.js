@@ -4,7 +4,8 @@ import {
 import {
   TYPE_STUFF_COMMON,
   TYPE_STUFF_BOUNDARY,
-  TYPE_STUFF_BLOCK
+  TYPE_STUFF_BLOCK,
+  mergeRanges
 } from './stuff.js'
 
 const PIXEL_ERROR_LIMIT = 4
@@ -13,7 +14,10 @@ const PIXEL_VERTICAL_ALIGNED = 8
 const PIXEL_VERTICAL_DISTANCE = 40
 const PIXEL_HORIZONTAL_ALIGNED = 8
 const PIXEL_HORIZONTAL_DISTANCE = 30
+const PIXEL_VERTICAL_SPACE_LIMIT = 0
+
 const TYPE_STRUCTURE_BLOCK = 'block'
+const TYPE_STRUCTURE_LINE = 'line'
 
 export function extractStructure (detailedStuff) {
   const structure = analyzeStructure(detailedStuff)
@@ -87,7 +91,34 @@ function recursivelyAnalyze (stuff, area = {}) {
     }
   } else {
     const mergedStuff = mergeRelevantStuff(stuff)
-    console.log('mergedStuff', mergedStuff)
+    const splitedStuff = splitStuffByHorizontalSpace(mergedStuff)
+    console.log('splitedStuff', splitedStuff)
+    splitedStuff.forEach(lineStuff => {
+      const type = TYPE_STRUCTURE_LINE
+      let top, bottom, left, right
+      lineStuff.forEach((stuffItem, index) => {
+        if (index) {
+          if (stuffItem.top < top) top = stuffItem.top
+          if (stuffItem.bottom > bottom) bottom = stuffItem.bottom
+          if (stuffItem.left < left) left = stuffItem.left
+          if (stuffItem.right < right) right = stuffItem.right
+        } else {
+          top = stuffItem.top
+          bottom = stuffItem.bottom
+          left = stuffItem.left
+          right = stuffItem.right
+        }
+      })
+      const width = right - left + 1
+      const height = bottom - top + 1
+      // todo
+      const structureItem = {
+        type,
+        top, bottom, left, right,
+        width, height
+      }
+      structure.push(structureItem)
+    })
   }
   return structure
 }
@@ -172,19 +203,19 @@ function mergeRelevantStuff (stuff) {
     let top, bottom, left, right
     const detailedStuffIds = []
     group.forEach((stuffIndex, index) => {
-      const tempStuff = stuff[stuffIndex]
+      const stuffItem = stuff[stuffIndex]
       if (index) {
-        if (tempStuff.top < top) top = tempStuff.top
-        if (tempStuff.bottom > bottom) bottom = tempStuff.bottom
-        if (tempStuff.left < left) left = tempStuff.left
-        if (tempStuff.right < right) right = tempStuff.right
+        if (stuffItem.top < top) top = stuffItem.top
+        if (stuffItem.bottom > bottom) bottom = stuffItem.bottom
+        if (stuffItem.left < left) left = stuffItem.left
+        if (stuffItem.right < right) right = stuffItem.right
       } else {
-        top = tempStuff.top
-        bottom = tempStuff.bottom
-        left = tempStuff.left
-        right = tempStuff.right
+        top = stuffItem.top
+        bottom = stuffItem.bottom
+        left = stuffItem.left
+        right = stuffItem.right
       }
-      detailedStuffIds.push(tempStuff.id)
+      detailedStuffIds.push(stuffItem.id)
     })
     const width = right - left + 1
     const height = bottom - top + 1
@@ -279,4 +310,28 @@ function formatRelevanceMap (relevanceMap) {
     formattedRelevanceMap.push(group)
   }
   return formattedRelevanceMap
+}
+
+function splitStuffByHorizontalSpace (mergedStuff) {
+  const verticalRanges = mergedStuff.map(stuff => {
+    const {top, bottom} = stuff
+    return [top, bottom]
+  })
+  const verticalCoverage = mergeRanges(
+    PIXEL_VERTICAL_SPACE_LIMIT, ...verticalRanges
+  )
+  const splitedStuff = Array(verticalCoverage.length)
+  for (let i = 0; i < splitedStuff.length; i++) {
+    splitedStuff[i] = []
+  }
+  mergedStuff.forEach(stuff => {
+    const {top, bottom} = stuff
+    for (let i = 0; i < verticalCoverage.length; i++) {
+      const [topLimit, bottomLimit] = verticalCoverage[i]
+      if (top >= topLimit && bottom <= bottomLimit) {
+        splitedStuff[i].push(stuff)
+      }
+    }
+  })
+  return splitedStuff
 }
