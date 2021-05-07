@@ -21,7 +21,7 @@ loadDesign((imageData, designSizeRatio) => {
   imageData = checkDesign(imageData)
   initAssistance(imageData, designSizeRatio)
   const detailedStuff = extractStuff(imageData)
-  extractStructure(detailedStuff)
+  extractStructure(detailedStuff, imageData)
 })
 
 /* Functions */
