@@ -22,259 +22,13 @@ const TYPE_STRUCTURE_ROW = 'row'
 const TYPE_STRUCTURE_COLUMN = 'column'
 
 export function extractStructure (detailedStuff, imageData) {
-  const structure = analyzeStructure(detailedStuff, imageData)
-}
-
-function analyzeStructure (detailedStuff, imageData) {
-  startProcess('analyzeStructure', _ => console.info(_))
-  const {width, height} = imageData
   const mergedStuff = mergeRelevantStuff(detailedStuff)
-  const structure = recursivelyAnalyze(mergedStuff, {
-    top: 0,
-    left: 0,
-    right: width,
-    bottom: height
-  })
-  console.log('structure', structure)
-  endProcess('analyzeStructure', _ => console.info(_))
-}
-
-function recursivelyAnalyze (stuff, area = {}, options = {}) {
-  let {
-    top: areaTop,
-    bottom: areaBottom,
-    left: areaLeft,
-    right: areaRight
-  } = area
-  const {
-    inColumn = true,
-    inRow = false,
-    stuffCount = 0
-  } = options
-  const structure = []
-  const {
-    widestDividingStuff,
-    restStuff: restStuffOfDividing
-  } = filterWidestDividingStuff(stuff)
-  const {
-    blockStuff,
-    restStuff: restStuffOfBlock
-  } = filterBlockStuff(stuff)
-  ;(_ => {
-    if (widestDividingStuff.length) {
-      const dividingLeft = Math.min(
-        ...widestDividingStuff.map(({left}) => left)
-      )
-      const dividingRight = Math.max(
-        ...widestDividingStuff.map(({right}) => right)
-      )
-      const dividingWidth = dividingRight - dividingLeft + 1
-      for (let i = 0; i <= widestDividingStuff.length; i++) {
-        const lastDividingStuff = (
-          i > 0 ? widestDividingStuff[i - 1] : null
-        )
-        const nextDividingStuff = (
-          i < widestDividingStuff.length ?
-          widestDividingStuff[i] :
-          null
-        )
-        const type = TYPE_STRUCTURE_BLOCK
-        const borderBottom = Boolean(
-          nextDividingStuff &&
-          nextDividingStuff.height > PIXEL_BORDER_LIMIT
-        )
-        const left = dividingLeft
-        const right = dividingRight
-        const width = dividingWidth
-        let top = areaTop
-        let bottom = areaBottom
-        if (lastDividingStuff) {
-          top = lastDividingStuff.bottom
-        }
-        if (nextDividingStuff) {
-          bottom = nextDividingStuff.bottom - 1
-        }
-        const height = bottom - top + 1
-        const stuffInArea = filterStuffInArea(restStuffOfDividing, {
-          top, bottom, left, right
-        })
-        const children = recursivelyAnalyze(stuffInArea, {
-          top, bottom, left, right
-        })
-        const structureItem = {
-          type, borderBottom,
-          left, right, width,
-          top, bottom, height,
-          children
-        }
-        structure.push(structureItem)
-      }
-    } else if (inColumn) {
-      const splitedStuff = splitStuffByHorizontalSpace(stuff)
-      if (
-        stuffCount === 1 &&
-        splitedStuff.length === 1
-      ) return
-      splitedStuff.forEach(rowStuff => {
-        const type = TYPE_STRUCTURE_ROW
-        let top, bottom, left, right
-        rowStuff.forEach((stuffItem, index) => {
-          if (index) {
-            if (stuffItem.top < top) top = stuffItem.top
-            if (stuffItem.bottom > bottom) bottom = stuffItem.bottom
-            if (stuffItem.left < left) left = stuffItem.left
-            if (stuffItem.right > right) right = stuffItem.right
-          } else {
-            top = stuffItem.top
-            bottom = stuffItem.bottom
-            left = stuffItem.left
-            right = stuffItem.right
-          }
-        })
-        const width = right - left + 1
-        const height = bottom - top + 1
-        let children = recursivelyAnalyze(rowStuff, {
-          top, bottom, left, right
-        }, {
-          inRow: true,
-          inColumn: false,
-          stuffCount: splitedStuff.length
-        })
-        const [child] = children
-        if (
-          children.length === 1 &&
-          !child.children.length &&
-          top === child.top &&
-          bottom === child.bottom &&
-          left === child.left &&
-          right === child.right
-        ) {
-          children = []
-        }
-        const structureItem = {
-          type, children,
-          top, bottom, left, right,
-          width, height
-        }
-        structure.push(structureItem)
-      })
-    } else if (inRow) {
-      const splitedStuff = splitStuffByVerticalSpace(stuff)
-      if (
-        stuffCount === 1 &&
-        splitedStuff.length === 1
-      ) return
-      splitedStuff.forEach(columnStuff => {
-        const type = TYPE_STRUCTURE_COLUMN
-        let top, bottom, left, right
-        columnStuff.forEach((stuffItem, index) => {
-          if (index) {
-            if (stuffItem.top < top) top = stuffItem.top
-            if (stuffItem.bottom > bottom) bottom = stuffItem.bottom
-            if (stuffItem.left < left) left = stuffItem.left
-            if (stuffItem.right > right) right = stuffItem.right
-          } else {
-            top = stuffItem.top
-            bottom = stuffItem.bottom
-            left = stuffItem.left
-            right = stuffItem.right
-          }
-        })
-        const width = right - left + 1
-        const height = bottom - top + 1
-        let children = recursivelyAnalyze(columnStuff, {
-          top, bottom, left, right
-        }, {
-          inColumn: true,
-          inRow: false,
-          stuffCount: splitedStuff.length
-        })
-        const [child] = children
-        if (
-          children.length === 1 &&
-          !child.children.length &&
-          top === child.top &&
-          bottom === child.bottom &&
-          left === child.left &&
-          right === child.right
-        ) {
-          children = []
-        }
-        const structureItem = {
-          type, children,
-          top, bottom, left, right,
-          width, height
-        }
-        structure.push(structureItem)
-      })
-    }
-  })()
+  const structure = analyzeStructure(mergedStuff, imageData)
   return structure
 }
 
-function filterWidestDividingStuff (stuff) {
-  const widestDividingStuff = []
-  const restStuff = []
-  const dividingStuff = stuff.filter(({type}) => {
-    return [TYPE_STUFF_BOUNDARY].includes(type)
-  })
-  const maxWidth = Math.max(
-    ...dividingStuff.map(({width}) => width), 0
-  )
-  const widthLimit = maxWidth - PIXEL_ERROR_LIMIT
-  stuff.forEach(stuffItem => {
-    const {type, width} = stuffItem
-    if (
-      [TYPE_STUFF_BOUNDARY].includes(type) &&
-      width > widthLimit
-    ) {
-      widestDividingStuff.push(stuffItem)
-    } else {
-      restStuff.push(stuffItem)
-    }
-  })
-  return {
-    widestDividingStuff,
-    restStuff
-  }
-}
-
-function filterBlockStuff (stuff, area) {
-  const blockStuff = []
-  const restStuff = []
-  // todo
-  return {
-    blockStuff,
-    restStuff
-  }
-}
-
-function filterStuffInArea (stuff, area) {
-  const {
-    top: areaTop,
-    bottom: areaBottom,
-    left: areaLeft,
-    right: areaRight
-  } = area
-  const stuffInArea = stuff.filter(stuffItem => {
-    const {
-      top, bottom, left, right
-    } = stuffItem
-    const verticalCoincident = (
-      (top - areaBottom) * (bottom - areaTop)
-    ) <= 0
-    const horizontalCoincident = (
-      (left - areaRight) * (right - areaLeft)
-    ) <= 0
-    return (
-      verticalCoincident &&
-      horizontalCoincident
-    )
-  })
-  return stuffInArea
-}
-
 function mergeRelevantStuff (stuff) {
+  startProcess('mergeRelevantStuff', _ => console.info(_))
   const relevanceMap = Array(stuff.length)
   for (let i = 0; i < relevanceMap.length; i++) {
     relevanceMap[i] = []
@@ -330,6 +84,7 @@ function mergeRelevantStuff (stuff) {
     }
     mergedStuff.push(newStuff)
   })
+  endProcess('mergeRelevantStuff', _ => console.info(_))
   return mergedStuff
 }
 
@@ -420,6 +175,148 @@ function formatRelevanceMap (relevanceMap) {
   return formattedRelevanceMap
 }
 
+function analyzeStructure (mergedStuff, imageData) {
+  startProcess('analyzeStructure', _ => console.info(_))
+  const {width, height} = imageData
+  const structure = recursivelyAnalyze(mergedStuff, {
+    top: 0,
+    left: 0,
+    right: width,
+    bottom: height
+  })
+  endProcess('analyzeStructure', _ => console.info(_))
+  return structure
+}
+
+function recursivelyAnalyze (stuff, area = {}, options = {}) {
+  let {
+    top: areaTop,
+    bottom: areaBottom,
+    left: areaLeft,
+    right: areaRight
+  } = area
+  const {
+    inColumn = true,
+    inRow = false,
+    stuffCount = 0
+  } = options
+  const {
+    widestDividingStuff, restStuff
+  } = filterWidestDividingStuff(stuff)
+  const structure = []
+  ;(_ => {
+    if (widestDividingStuff.length) {
+      const dividingLeft = Math.min(
+        ...widestDividingStuff.map(({left}) => left)
+      )
+      const dividingRight = Math.max(
+        ...widestDividingStuff.map(({right}) => right)
+      )
+      const dividingWidth = dividingRight - dividingLeft + 1
+      for (let i = 0; i <= widestDividingStuff.length; i++) {
+        const structureItem = handleDividingStuff(
+          widestDividingStuff, restStuff, i,
+          areaTop, areaBottom,
+          dividingLeft, dividingRight, dividingWidth
+        )
+        structure.push(structureItem)
+      }
+    } else if (inColumn) {
+      const splitedStuff = splitStuffByHorizontalSpace(stuff)
+      if (
+        stuffCount === 1 &&
+        splitedStuff.length === 1
+      ) return
+      splitedStuff.forEach(rowStuff => {
+        const type = TYPE_STRUCTURE_ROW
+        const structureItem = handleSplitedStuff(
+          type, rowStuff, splitedStuff
+        )
+        structure.push(structureItem)
+      })
+    } else if (inRow) {
+      const splitedStuff = splitStuffByVerticalSpace(stuff)
+      if (
+        stuffCount === 1 &&
+        splitedStuff.length === 1
+      ) return
+      splitedStuff.forEach(columnStuff => {
+        const type = TYPE_STRUCTURE_COLUMN
+        const structureItem = handleSplitedStuff(
+          type, columnStuff, splitedStuff
+        )
+        structure.push(structureItem)
+      })
+    }
+  })()
+  return structure
+}
+
+function filterWidestDividingStuff (stuff) {
+  const widestDividingStuff = []
+  const restStuff = []
+  const dividingStuff = stuff.filter(({type}) => {
+    return [TYPE_STUFF_BOUNDARY].includes(type)
+  })
+  const maxWidth = Math.max(
+    ...dividingStuff.map(({width}) => width), 0
+  )
+  const widthLimit = maxWidth - PIXEL_ERROR_LIMIT
+  const otherStuff = stuff.filter(({type}) => {
+    return ![TYPE_STUFF_BOUNDARY].includes(type)
+  })
+  const othersMaxWidth = Math.max(
+    ...otherStuff.map(({width}) => width), 0
+  )
+  const othersWidthLimit = othersMaxWidth - PIXEL_ERROR_LIMIT
+  if (maxWidth < othersWidthLimit) {
+    return {
+      widestDividingStuff,
+      restStuff: stuff
+    }
+  }
+  stuff.forEach(stuffItem => {
+    const {type, width} = stuffItem
+    if (
+      [TYPE_STUFF_BOUNDARY].includes(type) &&
+      width > widthLimit
+    ) {
+      widestDividingStuff.push(stuffItem)
+    } else {
+      restStuff.push(stuffItem)
+    }
+  })
+  return {
+    widestDividingStuff,
+    restStuff
+  }
+}
+
+function filterStuffInArea (stuff, area) {
+  const {
+    top: areaTop,
+    bottom: areaBottom,
+    left: areaLeft,
+    right: areaRight
+  } = area
+  const stuffInArea = stuff.filter(stuffItem => {
+    const {
+      top, bottom, left, right
+    } = stuffItem
+    const verticalCoincident = (
+      (top - areaBottom) * (bottom - areaTop)
+    ) <= 0
+    const horizontalCoincident = (
+      (left - areaRight) * (right - areaLeft)
+    ) <= 0
+    return (
+      verticalCoincident &&
+      horizontalCoincident
+    )
+  })
+  return stuffInArea
+}
+
 function splitStuffByHorizontalSpace (stuff) {
   const verticalRanges = stuff.map(stuffItem => {
     const {top, bottom} = stuffItem
@@ -466,4 +363,111 @@ function splitStuffByVerticalSpace (stuff) {
     }
   })
   return splitedStuff
+}
+
+function handleDividingStuff (
+  widestDividingStuff, restStuff, index,
+  areaTop, areaBottom,
+  dividingLeft, dividingRight, dividingWidth
+) {
+  const lastDividingStuff = (
+    index > 0 ? widestDividingStuff[index - 1] : null
+  )
+  const nextDividingStuff = (
+    index < widestDividingStuff.length ?
+    widestDividingStuff[index] :
+    null
+  )
+  const type = TYPE_STRUCTURE_BLOCK
+  const borderBottom = Boolean(
+    nextDividingStuff &&
+    nextDividingStuff.height > PIXEL_BORDER_LIMIT
+  )
+  const left = dividingLeft
+  const right = dividingRight
+  const width = dividingWidth
+  let top = areaTop
+  let bottom = areaBottom
+  if (lastDividingStuff) {
+    top = lastDividingStuff.bottom
+  }
+  if (nextDividingStuff) {
+    bottom = nextDividingStuff.bottom - 1
+  }
+  const height = bottom - top + 1
+  const stuffInArea = filterStuffInArea(restStuff, {
+    top, bottom, left, right
+  })
+  const children = recursivelyAnalyze(stuffInArea, {
+    top, bottom, left, right
+  })
+  const structureItem = {
+    type, borderBottom,
+    left, right, width,
+    top, bottom, height,
+    children
+  }
+  return structureItem
+}
+
+function handleSplitedStuff (type, sectionStuff, splitedStuff) {
+  let top, bottom, left, right
+  sectionStuff.forEach((stuffItem, index) => {
+    if (index) {
+      if (stuffItem.top < top) top = stuffItem.top
+      if (stuffItem.bottom > bottom) bottom = stuffItem.bottom
+      if (stuffItem.left < left) left = stuffItem.left
+      if (stuffItem.right > right) right = stuffItem.right
+    } else {
+      top = stuffItem.top
+      bottom = stuffItem.bottom
+      left = stuffItem.left
+      right = stuffItem.right
+    }
+  })
+  const width = right - left + 1
+  const height = bottom - top + 1
+  const containerIndex = sectionStuff.findIndex(stuffItem => {
+    return (
+      stuffItem.type === TYPE_STUFF_BLOCK &&
+      stuffItem.top === top &&
+      stuffItem.bottom === bottom &&
+      stuffItem.left === left &&
+      stuffItem.right === right
+    )
+  })
+  let children
+  if (containerIndex >= 0) {
+    type = TYPE_STRUCTURE_BLOCK
+    sectionStuff.splice(containerIndex, 1)
+    children = recursivelyAnalyze(sectionStuff, {
+      top, bottom, left, right,
+      stuffCount: splitedStuff.length
+    })
+  } else {
+    children = recursivelyAnalyze(sectionStuff, {
+      top, bottom, left, right
+    }, {
+      inRow: type === TYPE_STRUCTURE_ROW,
+      inColumn: type === TYPE_STRUCTURE_COLUMN,
+      stuffCount: splitedStuff.length
+    })
+  }
+  const [child] = children
+  if (
+    children.length === 1 &&
+    !child.children.length &&
+    top === child.top &&
+    bottom === child.bottom &&
+    left === child.left &&
+    right === child.right
+  ) {
+    children = []
+  }
+  const structureItem = {
+    type, children,
+    top, bottom, left, right,
+    width, height
+  }
+  return structureItem
 }
