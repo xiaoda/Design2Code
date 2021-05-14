@@ -4,6 +4,7 @@ import {
 import {checkDesign} from './core/prepare.js'
 import {extractStuff} from './core/stuff.js'
 import {extractStructure} from './core/structure.js'
+import {generateCode} from './core/code.js'
 
 /* Config */
 const DESIGN_SRC = './design/kbl-2.png'
@@ -22,7 +23,7 @@ loadDesign((imageData, designSizeRatio) => {
   initAssistance(imageData, designSizeRatio)
   const detailedStuff = extractStuff(imageData)
   const structure = extractStructure(detailedStuff, imageData)
-  console.log('structure', structure)
+  generateCode(structure, detailedStuff, imageData)
 })
 
 /* Functions */
