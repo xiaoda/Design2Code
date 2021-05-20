@@ -13,7 +13,8 @@ const WECHAT_HEADER = window.WECHAT_HEADER = true
 /* Constants */
 const canvas = document.getElementById('design')
 const ctx = window.ctx = canvas.getContext('2d')
-const processCanvas = document.getElementById('process')
+const processCanvas =
+window.processCanvas = document.getElementById('process')
 const processCtx =
 window.processCtx = processCanvas.getContext('2d')
 
@@ -22,7 +23,9 @@ loadDesign((imageData, designSizeRatio) => {
   imageData = checkDesign(imageData)
   initAssistance(imageData, designSizeRatio)
   const detailedStuff = extractStuff(imageData)
+  console.info('DETAILED_STUFF', detailedStuff)
   const structure = extractStructure(detailedStuff, imageData)
+  console.info('STRUCTURE', structure)
   generateCode(structure, detailedStuff, imageData)
 })
 

@@ -9,7 +9,7 @@ export function generateCode (
 ) {
   const html = generateHtml(structure)
   const indentedHtml = indentHtml(html)
-  console.log(indentedHtml)
+  console.info('INDENTED HTML\n', indentedHtml)
 }
 
 function generateHtml (structure) {
@@ -55,6 +55,7 @@ function indentHtml (html) {
   html = html.trim()
   let indentedHtml = ''
   let indentSize = 0
+  let lastTagIsClosed = false
   for (let index in html) {
     index = Number(index)
     const letter = html[index]
@@ -73,12 +74,16 @@ function indentHtml (html) {
     ) {
       indentSize += 2
       indentedHtml += `\n${' '.repeat(indentSize)}`
+      lastTagIsClosed = false
     } else if (
       letter === '<' &&
       nextLetter === '/'
     ) {
-      indentedHtml += `\n${' '.repeat(indentSize)}`
+      if (lastTagIsClosed) {
+        indentedHtml += `\n${' '.repeat(indentSize)}`
+      }
       indentSize -= 2
+      lastTagIsClosed = true
     }
     indentedHtml += letter
   }

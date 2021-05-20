@@ -1,6 +1,7 @@
 import {
   startProcess, endProcess,
-  generateRandomString
+  generateRandomString,
+  saveImage
 } from '../utils/index.js'
 import {sobel} from '../utils/edge-detection.js'
 
@@ -20,6 +21,7 @@ export function extractStuff (imageData) {
   const processedStuff = processRawStuff(rawStuff)
   const detailedStuff = generateDetailedStuff(processedStuff)
   highlightStuff(edgeImageData, detailedStuff)
+  // saveImage(window.processCanvas)
   return detailedStuff
 }
 

@@ -74,3 +74,11 @@ export function getColorsVariance (colorA, colorB) {
   ) ** 0.5
   return variance
 }
+
+export function saveImage (canvas, name = 'save') {
+  const link = window.document.createElement('a')
+  const dataUrl = canvas.toDataURL('image/png')
+  link.href = dataUrl
+  link.download = name
+  link.click()
+}
