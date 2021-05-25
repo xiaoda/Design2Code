@@ -11,9 +11,11 @@ const PIXEL_STUFF_LIMIT = 6
 const PIXEL_BOUNDARY_LIMIT = 10
 const RATIO_FULL_LIMIT = .95
 
-export const TYPE_STUFF_COMMON = 'common'
-export const TYPE_STUFF_BOUNDARY = 'boundary'
-export const TYPE_STUFF_BLOCK = 'block'
+export const TYPE_STUFF = {
+  COMMON: 'common',
+  BOUNDARY: 'boundary',
+  BLOCK: 'block'
+}
 
 export function extractStuff (imageData) {
   const edgeImageData = detectEdge(imageData)
@@ -338,17 +340,17 @@ function generateDetailedStuff (processedStuff) {
     const lastFeature = features[features.length - 1]
     const topCoverage = firstFeature.total / width
     const bottomCoverage = lastFeature.total / width
-    let type = TYPE_STUFF_COMMON
+    let type = TYPE_STUFF.COMMON
     if (
       height < PIXEL_BOUNDARY_LIMIT &&
       topCoverage > RATIO_FULL_LIMIT &&
       bottomCoverage > RATIO_FULL_LIMIT
-    ) type = TYPE_STUFF_BOUNDARY
+    ) type = TYPE_STUFF.BOUNDARY
     else if (
       topCoverage > RATIO_FULL_LIMIT &&
       bottomCoverage > RATIO_FULL_LIMIT &&
       features.every(({range}) => range / width > RATIO_FULL_LIMIT)
-    ) type = TYPE_STUFF_BLOCK
+    ) type = TYPE_STUFF.BLOCK
     const stuffToPush = {
       id, processedStuffIndex,
       top, bottom, left, right,

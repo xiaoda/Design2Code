@@ -1,15 +1,22 @@
 import {
   startProcess, endProcess
 } from '../utils/index.js'
+import {TYPE_STRUCTURE} from './structure.js'
 
 const TAG_DIV = '<div${attributes}>${content}</div>'
+
+const classNameCounter = {}
+for (const key in TYPE_STRUCTURE) {
+  const value = TYPE_STRUCTURE[key]
+  classNameCounter[value] = 0
+}
 
 export function generateCode (
   structure, detailedStuff, imageData
 ) {
   const html = generateHtml(structure)
   const indentedHtml = indentHtml(html)
-  console.info('INDENTED HTML\n', indentedHtml)
+  // console.info('INDENTED_HTML', `\n${indentedHtml}`)
 }
 
 function generateHtml (structure) {
@@ -23,8 +30,11 @@ function recursivelyGenerateHtml (structure) {
   let html = ''
   structure.forEach(structureItem => {
     const {type, children} = structureItem
-    const className = type
-    const attributes = {class: className}
+    const commonClassName = type
+    const currentCount = classNameCounter[type]++
+    const specificClassName = `${type}${currentCount}`
+    const classNames = [commonClassName, specificClassName]
+    const attributes = {class: classNames.join(' ')}
     const content = (
       children.length ?
       recursivelyGenerateHtml(children) : ''

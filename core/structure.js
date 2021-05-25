@@ -2,10 +2,7 @@ import {
   startProcess, endProcess
 } from '../utils/index.js'
 import {
-  TYPE_STUFF_COMMON,
-  TYPE_STUFF_BOUNDARY,
-  TYPE_STUFF_BLOCK,
-  mergeRanges
+  TYPE_STUFF, mergeRanges
 } from './stuff.js'
 
 const PIXEL_ERROR_LIMIT = 4
@@ -17,9 +14,11 @@ const PIXEL_HORIZONTAL_ALIGNED = 8
 const PIXEL_HORIZONTAL_DISTANCE = 30
 const PIXEL_HORIZONTAL_SPACE_LIMIT = 0
 
-const TYPE_STRUCTURE_BLOCK = 'block'
-const TYPE_STRUCTURE_ROW = 'row'
-const TYPE_STRUCTURE_COLUMN = 'column'
+export const TYPE_STRUCTURE = {
+  BLOCK: 'block',
+  ROW: 'row',
+  COLUMN: 'column'
+}
 
 export function extractStructure (detailedStuff, imageData) {
   const mergedStuff = mergeRelevantStuff(detailedStuff)
@@ -74,7 +73,7 @@ function mergeRelevantStuff (stuff) {
     const height = bottom - top + 1
     const type = (
       group.length > 1 ?
-      TYPE_STUFF_COMMON :
+      TYPE_STUFF.COMMON :
       stuff[group[0]].type
     )
     const newStuff = {
@@ -228,7 +227,7 @@ function recursivelyAnalyze (stuff, area = {}, options = {}) {
         splitedStuff.length === 1
       ) return
       splitedStuff.forEach(rowStuff => {
-        const type = TYPE_STRUCTURE_ROW
+        const type = TYPE_STRUCTURE.ROW
         const structureItem = handleSplitedStuff(
           type, rowStuff, splitedStuff
         )
@@ -241,7 +240,7 @@ function recursivelyAnalyze (stuff, area = {}, options = {}) {
         splitedStuff.length === 1
       ) return
       splitedStuff.forEach(columnStuff => {
-        const type = TYPE_STRUCTURE_COLUMN
+        const type = TYPE_STRUCTURE.COLUMN
         const structureItem = handleSplitedStuff(
           type, columnStuff, splitedStuff
         )
@@ -256,14 +255,14 @@ function filterWidestDividingStuff (stuff) {
   const widestDividingStuff = []
   const restStuff = []
   const dividingStuff = stuff.filter(({type}) => {
-    return [TYPE_STUFF_BOUNDARY].includes(type)
+    return [TYPE_STUFF.BOUNDARY].includes(type)
   })
   const maxWidth = Math.max(
     ...dividingStuff.map(({width}) => width), 0
   )
   const widthLimit = maxWidth - PIXEL_ERROR_LIMIT
   const otherStuff = stuff.filter(({type}) => {
-    return ![TYPE_STUFF_BOUNDARY].includes(type)
+    return ![TYPE_STUFF.BOUNDARY].includes(type)
   })
   const othersMaxWidth = Math.max(
     ...otherStuff.map(({width}) => width), 0
@@ -278,7 +277,7 @@ function filterWidestDividingStuff (stuff) {
   stuff.forEach(stuffItem => {
     const {type, width} = stuffItem
     if (
-      [TYPE_STUFF_BOUNDARY].includes(type) &&
+      [TYPE_STUFF.BOUNDARY].includes(type) &&
       width > widthLimit
     ) {
       widestDividingStuff.push(stuffItem)
@@ -378,7 +377,7 @@ function handleDividingStuff (
     widestDividingStuff[index] :
     null
   )
-  const type = TYPE_STRUCTURE_BLOCK
+  const type = TYPE_STRUCTURE.BLOCK
   const borderBottom = Boolean(
     nextDividingStuff &&
     nextDividingStuff.height > PIXEL_BORDER_LIMIT
@@ -429,7 +428,7 @@ function handleSplitedStuff (type, sectionStuff, splitedStuff) {
   const height = bottom - top + 1
   const containerIndex = sectionStuff.findIndex(stuffItem => {
     return (
-      stuffItem.type === TYPE_STUFF_BLOCK &&
+      stuffItem.type === TYPE_STUFF.BLOCK &&
       stuffItem.top === top &&
       stuffItem.bottom === bottom &&
       stuffItem.left === left &&
@@ -438,7 +437,7 @@ function handleSplitedStuff (type, sectionStuff, splitedStuff) {
   })
   let children
   if (containerIndex >= 0) {
-    type = TYPE_STRUCTURE_BLOCK
+    type = TYPE_STRUCTURE.BLOCK
     sectionStuff.splice(containerIndex, 1)
     children = recursivelyAnalyze(sectionStuff, {
       top, bottom, left, right,
@@ -448,8 +447,8 @@ function handleSplitedStuff (type, sectionStuff, splitedStuff) {
     children = recursivelyAnalyze(sectionStuff, {
       top, bottom, left, right
     }, {
-      inRow: type === TYPE_STRUCTURE_ROW,
-      inColumn: type === TYPE_STRUCTURE_COLUMN,
+      inRow: type === TYPE_STRUCTURE.ROW,
+      inColumn: type === TYPE_STRUCTURE.COLUMN,
       stuffCount: splitedStuff.length
     })
   }
@@ -468,6 +467,11 @@ function handleSplitedStuff (type, sectionStuff, splitedStuff) {
     type, children,
     top, bottom, left, right,
     width, height
+  }
+  if (!children.length) {
+    const [stuff] = sectionStuff
+    const {detailedStuffIds} = stuff
+    structureItem.detailedStuffIds = detailedStuffIds
   }
   return structureItem
 }
