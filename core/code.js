@@ -3,9 +3,12 @@ import {
 } from '../utils/index.js'
 import {TYPE_STRUCTURE} from './structure.js'
 
+const ERROR_PIXEL = 2
 const TAG_DIV = '<div${attributes}>${content}</div>'
 
 const classNameCounter = {}
+const stylesGroup = {}
+
 for (const key in TYPE_STRUCTURE) {
   const value = TYPE_STRUCTURE[key]
   classNameCounter[value] = 0
@@ -16,7 +19,8 @@ export function generateCode (
 ) {
   const html = generateHtml(structure)
   const indentedHtml = indentHtml(html)
-  // console.info('INDENTED_HTML', `\n${indentedHtml}`)
+  console.log('indentedHtml', `\n${indentedHtml}`)
+  console.log('stylesGroup', stylesGroup)
 }
 
 function generateHtml (structure) {
@@ -26,10 +30,14 @@ function generateHtml (structure) {
   return html
 }
 
-function recursivelyGenerateHtml (structure) {
+function recursivelyGenerateHtml (structure, parent) {
   let html = ''
-  structure.forEach(structureItem => {
-    const {type, children} = structureItem
+  structure.forEach((structureItem, index) => {
+    const {
+      type, children,
+      top, bottom, left, right,
+      width, height
+    } = structureItem
     const commonClassName = type
     const currentCount = classNameCounter[type]++
     const specificClassName = `${type}${currentCount}`
@@ -37,12 +45,82 @@ function recursivelyGenerateHtml (structure) {
     const attributes = {class: classNames.join(' ')}
     const content = (
       children.length ?
-      recursivelyGenerateHtml(children) : ''
+      recursivelyGenerateHtml(children, structureItem) :
+      specificClassName
     )
     const currentHtml = generateHtmlTag(
       TAG_DIV, attributes, content
     )
     html += currentHtml
+
+    const styles = {}
+    if (children.length) {
+      const childrenTop = Math.min(
+        ...children.map(child => child.top)
+      )
+      const childrenLeft = Math.min(
+        ...children.map(child => child.left)
+      )
+      const childrenRight = Math.max(
+        ...children.map(child => child.right)
+      )
+      const childrenBottom = Math.max(
+        ...children.map(child => child.bottom)
+      )
+      const paddingTop = childrenTop - top
+      const paddingLeft = childrenLeft - left
+      const paddingRight = right - childrenRight
+      const paddingBottom = bottom - childrenBottom
+      if (beyondError(paddingTop)) {
+        styles.paddingTop = paddingTop
+      }
+      if (beyondError(paddingLeft)) {
+        styles.paddingLeft = paddingLeft
+      }
+      if (beyondError(paddingRight)) {
+        styles.paddingRight = paddingRight
+      }
+      if (beyondError(paddingBottom)) {
+        styles.paddingBottom = paddingBottom
+      }
+    } else {
+      styles.width = width
+      styles.height = height
+    }
+    if (parent && structure.length > 1) {
+      let tempBottom = parent.top
+      const structureAbove = structure.filter(item => {
+        return item.bottom < top
+      })
+      if (structureAbove.length) {
+        structureAbove.forEach(item => {
+          if (item.bottom > tempBottom) {
+            tempBottom = item.bottom
+          }
+        })
+      }
+      const marginTop = top - tempBottom
+      if (beyondError(marginTop)) {
+        styles.marginTop = marginTop
+      }
+
+      let tempRight = parent.left
+      const leftSideStructure = structure.filter(item => {
+        return item.right < left
+      })
+      if (leftSideStructure.length) {
+        leftSideStructure.forEach(item => {
+          if (item.right > tempRight) {
+            tempRight = item.right
+          }
+        })
+      }
+      const marginLeft = left - tempRight - 1
+      if (beyondError(marginLeft)) {
+        styles.marginLeft = marginLeft
+      }
+    }
+    stylesGroup[specificClassName] = styles
   })
   return html
 }
@@ -58,6 +136,10 @@ function generateHtmlTag (tag, attributes, content) {
     .replace('${attributes}', attributesText)
     .replace('${content}', content)
   return htmlTag
+}
+
+function beyondError (number) {
+  return Math.abs(number) > ERROR_PIXEL
 }
 
 function indentHtml (html) {

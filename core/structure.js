@@ -60,7 +60,7 @@ function mergeRelevantStuff (stuff) {
         if (stuffItem.top < top) top = stuffItem.top
         if (stuffItem.bottom > bottom) bottom = stuffItem.bottom
         if (stuffItem.left < left) left = stuffItem.left
-        if (stuffItem.right < right) right = stuffItem.right
+        if (stuffItem.right > right) right = stuffItem.right
       } else {
         top = stuffItem.top
         bottom = stuffItem.bottom
