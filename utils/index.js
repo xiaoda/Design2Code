@@ -76,9 +76,25 @@ export function getColorsVariance (colorA, colorB) {
 }
 
 export function saveImage (canvas, name = 'save') {
-  const link = window.document.createElement('a')
+  const link = document.createElement('a')
   const dataUrl = canvas.toDataURL('image/png')
   link.href = dataUrl
   link.download = name
   link.click()
+}
+
+export function downloadFile (
+  data, fileName = 'file', type = 'text/plain'
+) {
+  const file = new Blob([data], {type})
+  const a = document.createElement('a')
+  const url = URL.createObjectURL(file)
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  setTimeout(_ => {
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, 0)
 }

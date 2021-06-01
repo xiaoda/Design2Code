@@ -1,5 +1,5 @@
 import {
-  startProcess, endProcess
+  startProcess, endProcess, downloadFile
 } from '../utils/index.js'
 import {TYPE_STRUCTURE} from './structure.js'
 
@@ -19,8 +19,10 @@ export function generateCode (
 ) {
   const html = generateHtml(structure)
   const indentedHtml = indentHtml(html)
-  console.log('indentedHtml', `\n${indentedHtml}`)
-  console.log('stylesGroup', stylesGroup)
+  const stylesGroup = getStylesGroup()
+  const css = generateCss(stylesGroup)
+  const completeCode = generateCompleteCode(indentedHtml, css)
+  // downloadFile(completeCode, 'demo.html', 'text/html')
 }
 
 function generateHtml (structure) {
@@ -54,6 +56,9 @@ function recursivelyGenerateHtml (structure, parent) {
     html += currentHtml
 
     const styles = {}
+    if (type === TYPE_STRUCTURE.ROW && children.length) {
+      styles.display = 'flex'
+    }
     if (children.length) {
       const childrenTop = Math.min(
         ...children.map(child => child.top)
@@ -120,7 +125,7 @@ function recursivelyGenerateHtml (structure, parent) {
         styles.marginLeft = marginLeft
       }
     }
-    stylesGroup[specificClassName] = styles
+    setStylesGroup(specificClassName, styles)
   })
   return html
 }
@@ -136,10 +141,6 @@ function generateHtmlTag (tag, attributes, content) {
     .replace('${attributes}', attributesText)
     .replace('${content}', content)
   return htmlTag
-}
-
-function beyondError (number) {
-  return Math.abs(number) > ERROR_PIXEL
 }
 
 function indentHtml (html) {
@@ -181,4 +182,70 @@ function indentHtml (html) {
   }
   endProcess('generateHtml', _ => console.info(_))
   return indentedHtml
+}
+
+function beyondError (number) {
+  return Math.abs(number) > ERROR_PIXEL
+}
+
+function setStylesGroup (key, value) {
+  stylesGroup[key] = value
+}
+
+function getStylesGroup () {
+  return stylesGroup
+}
+
+function generateCss (stylesGroup) {
+  startProcess('generateCss', _ => console.info(_))
+  let css = `*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}\n`
+  for (const className in stylesGroup) {
+    const styles = stylesGroup[className]
+    css += `.${className} {\n`
+    for (let key in styles) {
+      let value = styles[key]
+      if (typeof value === 'number') {
+        value += 'px'
+      }
+      key = key.replace(/[A-Z]/g, match => {
+        return `-${match.toLowerCase()}`
+      })
+      css += `  ${key}: ${value};\n`
+    }
+    css += '}\n'
+  }
+  endProcess('generateCss', _ => console.info(_))
+  return css
+}
+
+function generateCompleteCode (html, css) {
+  startProcess('generateCompleteCode', _ => console.info(_))
+  const template =
+`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=750">
+  <title>Demo</title>
+  <style>
+${indentCodeBlock(css, 4)}
+  </style>
+</head>
+<body>
+${indentCodeBlock(html, 2)}
+</body>
+</html>`
+  endProcess('generateCompleteCode', _ => console.info(_))
+  return template
+}
+
+function indentCodeBlock (code, size = 0) {
+  const indentedCode = ' '.repeat(size) + code.replaceAll(
+    '\n', `\n${' '.repeat(size)}`
+  ).trim()
+  return indentedCode
 }
