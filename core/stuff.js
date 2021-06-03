@@ -1,8 +1,7 @@
 import {
-  startProcess, endProcess,
-  generateRandomString,
-  saveImage
+  startProcess, endProcess, saveImage
 } from '../utils/index.js'
+import md5 from '../utils/md5.js'
 import {sobel} from '../utils/edge-detection.js'
 
 const GRAY_PIXEL_LIMIT = 10
@@ -310,7 +309,7 @@ function generateDetailedStuff (processedStuff) {
   startProcess('generateDetailedStuff', _ => console.info(_))
   const detailedStuff = []
   processedStuff.forEach((stuff, i) => {
-    const id = generateRandomString('ds')
+    const id = md5(JSON.stringify(stuff))
     const processedStuffIndex = i
     let top, bottom, left, right
     const features = []

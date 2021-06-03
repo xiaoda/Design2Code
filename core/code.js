@@ -2,21 +2,26 @@ import {
   startProcess, endProcess, downloadFile
 } from '../utils/index.js'
 import {TYPE_STRUCTURE} from './structure.js'
+import {findText} from './recognize.js'
 
 const ERROR_PIXEL = 2
 const TAG_DIV = '<div${attributes}>${content}</div>'
 
-const classNameCounter = {}
-const stylesGroup = {}
+const g_classNameCounter = {}
+const g_stylesGroup = {}
+let g_detailedStuff
+let g_imageData
 
 for (const key in TYPE_STRUCTURE) {
   const value = TYPE_STRUCTURE[key]
-  classNameCounter[value] = 0
+  g_classNameCounter[value] = 0
 }
 
 export function generateCode (
   structure, detailedStuff, imageData
 ) {
+  g_detailedStuff = detailedStuff
+  g_imageData = imageData
   const html = generateHtml(structure)
   const indentedHtml = indentHtml(html)
   const stylesGroup = getStylesGroup()
@@ -41,14 +46,14 @@ function recursivelyGenerateHtml (structure, parent) {
       width, height
     } = structureItem
     const commonClassName = type
-    const currentCount = classNameCounter[type]++
+    const currentCount = g_classNameCounter[type]++
     const specificClassName = `${type}${currentCount}`
     const classNames = [commonClassName, specificClassName]
     const attributes = {class: classNames.join(' ')}
     const content = (
       children.length ?
       recursivelyGenerateHtml(children, structureItem) :
-      specificClassName
+      recognizeContent(structureItem)
     )
     const currentHtml = generateHtmlTag(
       TAG_DIV, attributes, content
@@ -130,6 +135,23 @@ function recursivelyGenerateHtml (structure, parent) {
   return html
 }
 
+function recognizeContent (structure) {
+  structure.detailedStuffIds.forEach(id => {
+    const detailedStuff = g_detailedStuff.find(stuff => {
+      return stuff.id === id
+    })
+    const {
+      left, top, width, height
+    } = detailedStuff
+    const imageData = window.ctx.getImageData(
+      left, top, width, height
+    )
+    const options = {detailedStuffId: id}
+    const text = findText(imageData, options)
+    // todo
+  })
+}
+
 function generateHtmlTag (tag, attributes, content) {
   let attributesText = ''
   for (const key in attributes) {
@@ -189,11 +211,11 @@ function beyondError (number) {
 }
 
 function setStylesGroup (key, value) {
-  stylesGroup[key] = value
+  g_stylesGroup[key] = value
 }
 
 function getStylesGroup () {
-  return stylesGroup
+  return g_stylesGroup
 }
 
 function generateCss (stylesGroup) {
