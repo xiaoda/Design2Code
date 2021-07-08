@@ -1,16 +1,17 @@
 import {
-  startProcess, endProcess, downloadFile
+  startProcess, endProcess, downloadFile,
+  imageDataToDataUrl
 } from '../utils/index.js'
 import {TYPE_STRUCTURE} from './structure.js'
 import {findText} from './recognize.js'
 
 const ERROR_PIXEL = 2
 const TAG_DIV = '<div${attributes}>${content}</div>'
+const TAG_IMG = '<img${attributes}/>'
 
 const g_classNameCounter = {}
 const g_stylesGroup = {}
 let g_detailedStuff
-let g_imageData
 
 for (const key in TYPE_STRUCTURE) {
   const value = TYPE_STRUCTURE[key]
@@ -21,13 +22,13 @@ export function generateCode (
   structure, detailedStuff, imageData
 ) {
   g_detailedStuff = detailedStuff
-  g_imageData = imageData
   const html = generateHtml(structure)
   const indentedHtml = indentHtml(html)
   const stylesGroup = getStylesGroup()
   const css = generateCss(stylesGroup)
   const completeCode = generateCompleteCode(indentedHtml, css)
-  // downloadFile(completeCode, 'demo.html', 'text/html')
+  // console.log(completeCode)
+  downloadFile(completeCode, 'demo.html', 'text/html')
 }
 
 function generateHtml (structure) {
@@ -53,7 +54,7 @@ function recursivelyGenerateHtml (structure, parent) {
     const content = (
       children.length ?
       recursivelyGenerateHtml(children, structureItem) :
-      recognizeContent(structureItem)
+      generateStructureHtml(structureItem)
     )
     const currentHtml = generateHtmlTag(
       TAG_DIV, attributes, content
@@ -135,21 +136,109 @@ function recursivelyGenerateHtml (structure, parent) {
   return html
 }
 
-function recognizeContent (structure) {
-  structure.detailedStuffIds.forEach(id => {
-    const detailedStuff = g_detailedStuff.find(stuff => {
-      return stuff.id === id
-    })
+function generateStructureHtml (structure) {
+  const htmlObjectGroup = []
+  const sortedDetailedStuff = getSortedDetailedStuff(
+    structure.detailedStuffIds
+  )
+  sortedDetailedStuff.forEach(detailedStuff => {
     const {
-      left, top, width, height
+      left, top, width, height, id
     } = detailedStuff
     const imageData = window.ctx.getImageData(
       left, top, width, height
     )
+    const dataUrl = imageDataToDataUrl(imageData)
     const options = {detailedStuffId: id}
-    const text = findText(imageData, options)
-    // todo
+    const text = findText(dataUrl, options)
+    let content, type
+    if (text === null) {
+      const src = dataUrl
+      const attributes = {src}
+      content = generateHtmlTag(TAG_IMG, attributes)
+      type = 'image'
+    } else {
+      content = text
+      type = 'text'
+    }
+    htmlObjectGroup.push({content, type})
   })
+  let structureHtml = ''
+  let tempCurrentIndex = 0
+  htmlObjectGroup.forEach((htmlObject, index) => {
+    if (index < tempCurrentIndex) return
+    const {content, type} = htmlObject
+    switch (type) {
+      case 'text':
+        let tempHtml = content
+        for (
+          let i = index + 1;
+          i < htmlObjectGroup.length;
+          i++
+        ) {
+          const tempHtmlObject = htmlObjectGroup[i]
+          const {content, type} = tempHtmlObject
+          if (type === 'text') {
+            tempHtml += content
+            if (i === htmlObjectGroup.length - 1) {
+              tempCurrentIndex = htmlObjectGroup.length
+              if (index !== 0) {
+                tempHtml = `<span>${tempHtml}</span>`
+              }
+            }
+          } else {
+            tempHtml = `<span>${tempHtml}</span>`
+            tempCurrentIndex = i - 1
+            break
+          }
+        }
+        structureHtml += tempHtml
+        break
+      case 'image':
+        structureHtml += content
+        tempCurrentIndex = index
+        break
+    }
+  })
+  return structureHtml
+}
+
+function getSortedDetailedStuff (detailedStuffIds) {
+  let sortedDetailedStuff = []
+  ;(_ => {
+    const detailedStuff = detailedStuffIds.map(id => {
+      const stuff = g_detailedStuff.find(tempStuff => {
+        return tempStuff.id === id
+      })
+      return stuff
+    })
+    if (detailedStuffIds.length > 1) {
+      const [stuff1, stuff2] = detailedStuff
+      let direction
+      if (
+        stuff1.top > stuff2.bottom ||
+        stuff2.top > stuff1.bottom
+      ) direction = 'vertical'
+      else if (
+        stuff1.left > stuff2.right ||
+        stuff2.left > stuff1.right
+      ) direction = 'horizontal'
+      if (!direction) {
+        console.warn('Direction empty in getSortedDetailedStuff.')
+        return
+      }
+      const directionPropMap = {
+        vertical: 'top',
+        horizontal: 'left'
+      }
+      const prop = directionPropMap[direction]
+      sortedDetailedStuff = detailedStuff
+        .sort((stuff1, stuff2) => stuff1[prop] - stuff2[prop])
+    } else {
+      sortedDetailedStuff = [...detailedStuff]
+    }
+  })()
+  return sortedDetailedStuff
 }
 
 function generateHtmlTag (tag, attributes, content) {
@@ -166,7 +255,7 @@ function generateHtmlTag (tag, attributes, content) {
 }
 
 function indentHtml (html) {
-  startProcess('generateHtml', _ => console.info(_))
+  startProcess('indentHtml', _ => console.info(_))
   html = html.trim()
   let indentedHtml = ''
   let indentSize = 0
@@ -202,7 +291,7 @@ function indentHtml (html) {
     }
     indentedHtml += letter
   }
-  endProcess('generateHtml', _ => console.info(_))
+  endProcess('indentHtml', _ => console.info(_))
   return indentedHtml
 }
 

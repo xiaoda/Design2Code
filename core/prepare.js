@@ -100,9 +100,9 @@ function checkExtraLine (imageData, direction) {
     lineDataGroup.push(lineData)
     count++
   }
-  if (extraLineFound) {
-    console.warn(`Extra lines found on ${direction} with ${count} pixels.`)
-  }
+  if (extraLineFound) console.warn(
+    `Extra lines found on ${direction} with ${count} pixels.`
+  )
   return {
     extraLineFound,
     index: count
