@@ -27,8 +27,8 @@ export function generateCode (
   const stylesGroup = getStylesGroup()
   const css = generateCss(stylesGroup)
   const completeCode = generateCompleteCode(indentedHtml, css)
-  // console.log(completeCode)
-  downloadFile(completeCode, 'demo.html', 'text/html')
+  // downloadFile(completeCode, 'demo.html', 'text/html')
+  // console.log(indentedHtml)
 }
 
 function generateHtml (structure) {
@@ -47,7 +47,7 @@ function recursivelyGenerateHtml (structure, parent) {
       width, height
     } = structureItem
     const commonClassName = type
-    const currentCount = g_classNameCounter[type]++
+    const currentCount = ++g_classNameCounter[type]
     const specificClassName = `${type}${currentCount}`
     const classNames = [commonClassName, specificClassName]
     const attributes = {class: classNames.join(' ')}
@@ -99,7 +99,9 @@ function recursivelyGenerateHtml (structure, parent) {
       styles.height = height
     }
     if (parent && structure.length > 1) {
-      let tempBottom = parent.top
+      let tempBottom = Math.min(
+        ...structure.map(item => item.top)
+      )
       const structureAbove = structure.filter(item => {
         return item.bottom < top
       })
@@ -115,7 +117,9 @@ function recursivelyGenerateHtml (structure, parent) {
         styles.marginTop = marginTop
       }
 
-      let tempRight = parent.left
+      let tempRight = Math.min(
+        ...structure.map(item => item.left)
+      )
       const leftSideStructure = structure.filter(item => {
         return item.right < left
       })
@@ -170,9 +174,9 @@ function generateStructureHtml (structure) {
     const {content, type} = htmlObject
     switch (type) {
       case 'text':
-        let tempHtml = content
+        let tempHtml = ''
         for (
-          let i = index + 1;
+          let i = index;
           i < htmlObjectGroup.length;
           i++
         ) {
@@ -259,35 +263,51 @@ function indentHtml (html) {
   html = html.trim()
   let indentedHtml = ''
   let indentSize = 0
-  let lastTagIsClosed = false
+  let prevTagIsClosed = false
   for (let index in html) {
     index = Number(index)
-    const letter = html[index]
-    const lastLetter = (
+    const secondPrevLetter = (
+      index > 1 ?
+      html[index - 2] : null
+    )
+    const prevLetter = (
       index > 0 ?
       html[index - 1] : null
     )
+    const letter = html[index]
     const nextLetter = (
       index < html.length - 1 ?
       html[index + 1] : null
     )
+    /* For image tag */
     if (
-      lastLetter === '>' &&
+      secondPrevLetter === '/' &&
+      prevLetter === '>' &&
+      letter === '<'
+    ) {
+      indentSize -= 2
+      prevTagIsClosed = true
+    }
+    /* For starter tag */
+    if (
+      prevLetter === '>' &&
       letter === '<' &&
       nextLetter !== '/'
     ) {
       indentSize += 2
       indentedHtml += `\n${' '.repeat(indentSize)}`
-      lastTagIsClosed = false
-    } else if (
+      prevTagIsClosed = false
+    }
+    /* For closer tag */
+    if (
       letter === '<' &&
       nextLetter === '/'
     ) {
-      if (lastTagIsClosed) {
+      if (prevTagIsClosed) {
         indentedHtml += `\n${' '.repeat(indentSize)}`
       }
       indentSize -= 2
-      lastTagIsClosed = true
+      prevTagIsClosed = true
     }
     indentedHtml += letter
   }
