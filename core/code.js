@@ -5,16 +5,25 @@ import {
 import {TYPE_STRUCTURE} from './structure.js'
 import {findText} from './recognize.js'
 
+const TYPE_INLINE_BLOCK = {
+  IMG: 'img',
+  SPAN: 'span'
+}
 const ERROR_PIXEL = 2
 const TAG_DIV = '<div${attributes}>${content}</div>'
+const TAG_SPAN = '<span${attributes}>${content}</span>'
 const TAG_IMG = '<img${attributes}/>'
 
 const g_classNameCounter = {}
 const g_stylesGroup = {}
 let g_detailedStuff
 
-for (const key in TYPE_STRUCTURE) {
-  const value = TYPE_STRUCTURE[key]
+const mergedTypes = {
+  ...TYPE_STRUCTURE,
+  ...TYPE_INLINE_BLOCK
+}
+for (const key in mergedTypes) {
+  const value = mergedTypes[key]
   g_classNameCounter[value] = 0
 }
 
@@ -27,8 +36,8 @@ export function generateCode (
   const stylesGroup = getStylesGroup()
   const css = generateCss(stylesGroup)
   const completeCode = generateCompleteCode(indentedHtml, css)
-  // downloadFile(completeCode, 'demo.html', 'text/html')
-  // console.log(indentedHtml)
+  downloadFile(completeCode, 'demo.html', 'text/html')
+  // console.log(completeCode)
 }
 
 function generateHtml (structure) {
@@ -141,10 +150,17 @@ function recursivelyGenerateHtml (structure, parent) {
 }
 
 function generateStructureHtml (structure) {
-  const htmlObjectGroup = []
+  const {
+    top: structureTop,
+    bottom: structureBottom,
+    left: structureLeft,
+    right: structureRight
+  } = structure
   const sortedDetailedStuff = getSortedDetailedStuff(
     structure.detailedStuffIds
   )
+  const htmlObjectGroup = []
+
   sortedDetailedStuff.forEach(detailedStuff => {
     const {
       left, top, width, height, id
@@ -155,26 +171,68 @@ function generateStructureHtml (structure) {
     const dataUrl = imageDataToDataUrl(imageData)
     const options = {detailedStuffId: id}
     const text = findText(dataUrl, options)
+    let attributes = {}
     let content, type
     if (text === null) {
       const src = dataUrl
-      const attributes = {src}
-      content = generateHtmlTag(TAG_IMG, attributes)
+      attributes = {src}
       type = 'image'
     } else {
       content = text
       type = 'text'
     }
-    htmlObjectGroup.push({content, type})
+    htmlObjectGroup.push({
+      attributes, content, type
+    })
   })
+
   let structureHtml = ''
   let tempCurrentIndex = 0
+
+  function _setStyle (type, attributes, index) {
+    const commonClassName = type
+    const currentCount = ++g_classNameCounter[type]
+    const specificClassName = `${type}${currentCount}`
+    const classNames = [commonClassName, specificClassName]
+    attributes.class = classNames.join(' ')
+    const styles = {}
+    const {top, left} = sortedDetailedStuff[index]
+    if (index) {
+      const {
+        bottom: prevBottom,
+        right: prevRight
+      } = sortedDetailedStuff[index - 1]
+      const marginTop = top - prevBottom
+      const marginLeft = left - prevRight
+      if (beyondPositiveError(marginTop)) {
+        styles.marginTop = marginTop
+      } else if (beyondPositiveError(marginLeft)) {
+        styles.marginLeft = marginLeft
+      }
+    }
+    if (!styles.marginTop) {
+      const marginTop = top - structureTop
+      if (beyondPositiveError(marginTop)) {
+        styles.marginTop = marginTop
+      }
+    }
+    if (!styles.marginLeft) {
+      const marginLeft = left - structureLeft
+      if (beyondPositiveError(marginLeft)) {
+        styles.marginLeft = marginLeft
+      }
+    }
+    setStylesGroup(specificClassName, styles)
+  }
+
   htmlObjectGroup.forEach((htmlObject, index) => {
     if (index < tempCurrentIndex) return
-    const {content, type} = htmlObject
+    const {
+      attributes, content, type
+    } = htmlObject
     switch (type) {
-      case 'text':
-        let tempHtml = ''
+      case 'text': {
+        let html = ''
         for (
           let i = index;
           i < htmlObjectGroup.length;
@@ -183,25 +241,31 @@ function generateStructureHtml (structure) {
           const tempHtmlObject = htmlObjectGroup[i]
           const {content, type} = tempHtmlObject
           if (type === 'text') {
-            tempHtml += content
+            html += content
             if (i === htmlObjectGroup.length - 1) {
               tempCurrentIndex = htmlObjectGroup.length
               if (index !== 0) {
-                tempHtml = `<span>${tempHtml}</span>`
+                _setStyle('span', attributes, index)
+                html = generateHtmlTag(TAG_SPAN, attributes, html)
               }
             }
           } else {
-            tempHtml = `<span>${tempHtml}</span>`
+            _setStyle('span', attributes, index)
+            html = generateHtmlTag(TAG_SPAN, attributes, html)
             tempCurrentIndex = i - 1
             break
           }
         }
-        structureHtml += tempHtml
+        structureHtml += html
         break
-      case 'image':
-        structureHtml += content
+      }
+      case 'image': {
+        _setStyle('img', attributes, index)
+        const html = generateHtmlTag(TAG_IMG, attributes)
+        structureHtml += html
         tempCurrentIndex = index
         break
+      }
     }
   })
   return structureHtml
@@ -319,7 +383,12 @@ function beyondError (number) {
   return Math.abs(number) > ERROR_PIXEL
 }
 
+function beyondPositiveError (number) {
+  return number > ERROR_PIXEL
+}
+
 function setStylesGroup (key, value) {
+  if (!Object.keys(value).length) return
   g_stylesGroup[key] = value
 }
 
@@ -333,6 +402,11 @@ function generateCss (stylesGroup) {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+span, img {
+  display: inline-block;
+  margin-right: -3px;
+  vertical-align: top;
 }\n`
   for (const className in stylesGroup) {
     const styles = stylesGroup[className]
