@@ -4,6 +4,7 @@ import {
 import {checkDesign} from './core/prepare.js'
 import {extractStuff} from './core/stuff.js'
 import {extractStructure} from './core/structure.js'
+import {addStylesToStructure} from './core/structure-style.js'
 import {generateCode} from './core/code.js'
 
 /* Config */
@@ -24,9 +25,10 @@ loadDesign((imageData, designSizeRatio) => {
   initAssistance(imageData, designSizeRatio)
   const detailedStuff = extractStuff(imageData)
   console.info('DETAILED_STUFF', detailedStuff)
-  const structure = extractStructure(detailedStuff, imageData)
+  let structure = extractStructure(detailedStuff, imageData)
+  structure = addStylesToStructure(structure)
   console.info('STRUCTURE', structure)
-  generateCode(structure, detailedStuff, imageData)
+  const completeCode = generateCode(structure, detailedStuff)
 })
 
 /* Functions */
