@@ -1,9 +1,5 @@
-import {
-  startProcess, endProcess
-} from '../utils/index.js'
-import {
-  TYPE_STUFF, mergeRanges
-} from './stuff.js'
+import {startProcess, endProcess} from '../utils/index.js'
+import {TYPE_STUFF, mergeRanges} from './stuff.js'
 
 const PIXEL_ERROR_LIMIT = 4
 const PIXEL_BORDER_LIMIT = 2
@@ -203,6 +199,50 @@ function recursivelyAnalyze (stuff, area = {}, options = {}) {
     widestDividingStuff, restStuff
   } = filterWidestDividingStuff(stuff)
   const structure = []
+
+  function _handleDividingStuff (
+    index, dividingLeft, dividingRight, dividingWidth
+  ) {
+    const lastDividingStuff = (
+      index > 0 ? widestDividingStuff[index - 1] : null
+    )
+    const nextDividingStuff = (
+      index < widestDividingStuff.length ?
+      widestDividingStuff[index] :
+      null
+    )
+    const type = TYPE_STRUCTURE.BLOCK
+    const borderBottom = Boolean(
+      nextDividingStuff &&
+      nextDividingStuff.height > PIXEL_BORDER_LIMIT
+    )
+    const left = dividingLeft
+    const right = dividingRight
+    const width = dividingWidth
+    let top = areaTop
+    let bottom = areaBottom
+    if (lastDividingStuff) {
+      top = lastDividingStuff.bottom
+    }
+    if (nextDividingStuff) {
+      bottom = nextDividingStuff.bottom - 1
+    }
+    const height = bottom - top + 1
+    const stuffInArea = filterStuffInArea(restStuff, {
+      top, bottom, left, right
+    })
+    const children = recursivelyAnalyze(stuffInArea, {
+      top, bottom, left, right
+    })
+    const structureItem = {
+      type, borderBottom,
+      left, right, width,
+      top, bottom, height,
+      children
+    }
+    return structureItem
+  }
+
   ;(_ => {
     if (widestDividingStuff.length) {
       const dividingLeft = Math.min(
@@ -213,10 +253,8 @@ function recursivelyAnalyze (stuff, area = {}, options = {}) {
       )
       const dividingWidth = dividingRight - dividingLeft + 1
       for (let i = 0; i <= widestDividingStuff.length; i++) {
-        const structureItem = handleDividingStuff(
-          widestDividingStuff, restStuff, i,
-          areaTop, areaBottom,
-          dividingLeft, dividingRight, dividingWidth
+        const structureItem = _handleDividingStuff(
+          i, dividingLeft, dividingRight, dividingWidth
         )
         structure.push(structureItem)
       }
@@ -362,51 +400,6 @@ function splitStuffByVerticalSpace (stuff) {
     }
   })
   return splitedStuff
-}
-
-function handleDividingStuff (
-  widestDividingStuff, restStuff, index,
-  areaTop, areaBottom,
-  dividingLeft, dividingRight, dividingWidth
-) {
-  const lastDividingStuff = (
-    index > 0 ? widestDividingStuff[index - 1] : null
-  )
-  const nextDividingStuff = (
-    index < widestDividingStuff.length ?
-    widestDividingStuff[index] :
-    null
-  )
-  const type = TYPE_STRUCTURE.BLOCK
-  const borderBottom = Boolean(
-    nextDividingStuff &&
-    nextDividingStuff.height > PIXEL_BORDER_LIMIT
-  )
-  const left = dividingLeft
-  const right = dividingRight
-  const width = dividingWidth
-  let top = areaTop
-  let bottom = areaBottom
-  if (lastDividingStuff) {
-    top = lastDividingStuff.bottom
-  }
-  if (nextDividingStuff) {
-    bottom = nextDividingStuff.bottom - 1
-  }
-  const height = bottom - top + 1
-  const stuffInArea = filterStuffInArea(restStuff, {
-    top, bottom, left, right
-  })
-  const children = recursivelyAnalyze(stuffInArea, {
-    top, bottom, left, right
-  })
-  const structureItem = {
-    type, borderBottom,
-    left, right, width,
-    top, bottom, height,
-    children
-  }
-  return structureItem
 }
 
 function handleSplitedStuff (type, sectionStuff, splitedStuff) {
