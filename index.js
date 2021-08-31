@@ -26,7 +26,7 @@ loadDesign((imageData, designSizeRatio) => {
   const detailedStuff = extractStuff(imageData)
   console.info('DETAILED_STUFF', detailedStuff)
   let structure = extractStructure(detailedStuff, imageData)
-  structure = addStylesToStructure(structure)
+  structure = addStylesToStructure(structure, detailedStuff)
   console.info('STRUCTURE', structure)
   const completeCode = generateCode(structure, detailedStuff)
 })

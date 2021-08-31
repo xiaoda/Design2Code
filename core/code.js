@@ -3,12 +3,8 @@ import {
   imageDataToDataUrl
 } from '../utils/index.js'
 import {TYPE_STRUCTURE} from './structure.js'
-import {findText} from './recognize.js'
+import {TYPE_INLINE_BLOCK} from './structure-style.js'
 
-const TYPE_INLINE_BLOCK = {
-  IMG: 'img',
-  SPAN: 'span'
-}
 const ERROR_PIXEL = 2
 const TAG_DIV = '<div${attributes}>${content}</div>'
 const TAG_SPAN = '<span${attributes}>${content}</span>'
@@ -34,7 +30,6 @@ export function generateCode (structure, detailedStuff) {
   const stylesGroup = getStylesGroup()
   const css = generateCss(stylesGroup)
   const completeCode = generateCompleteCode(indentedHtml, css)
-  // console.log(completeCode)
   // downloadFile(completeCode, 'demo.html', 'text/html')
   return completeCode
 }
@@ -60,7 +55,7 @@ function recursivelyGenerateHtml (structure, parent) {
     const content = (
       children.length ?
       recursivelyGenerateHtml(children, structureItem) :
-      generateStructureHtml(structureItem)
+      generateSubStructureHtml(structureItem.subStructure)
     )
     const currentHtml = generateHtmlTag(
       TAG_DIV, attributes, content
@@ -71,164 +66,31 @@ function recursivelyGenerateHtml (structure, parent) {
   return html
 }
 
-function generateStructureHtml (structure) {
-  const {
-    top: structureTop,
-    bottom: structureBottom,
-    left: structureLeft,
-    right: structureRight
-  } = structure
-  const sortedDetailedStuff = getSortedDetailedStuff(
-    structure.detailedStuffIds
-  )
-  const htmlObjectGroup = []
-
-  sortedDetailedStuff.forEach(detailedStuff => {
+function generateSubStructureHtml (subStructure) {
+  let subStructureHtml = ''
+  const typeTagMap = {
+    [TYPE_INLINE_BLOCK.TEXT]: TAG_SPAN,
+    [TYPE_INLINE_BLOCK.IMAGE]: TAG_IMG
+  }
+  subStructure.forEach(subStructureItem => {
     const {
-      left, top, width, height, id
-    } = detailedStuff
-    const imageData = window.ctx.getImageData(
-      left, top, width, height
-    )
-    const dataUrl = imageDataToDataUrl(imageData)
-    const options = {detailedStuffId: id}
-    const text = findText(dataUrl, options)
-    let attributes = {}
-    let content, type
-    if (text === null) {
-      const src = dataUrl
-      attributes = {src}
-      type = 'image'
-    } else {
-      content = text
-      type = 'text'
-    }
-    htmlObjectGroup.push({
-      attributes, content, type
-    })
-  })
-
-  let structureHtml = ''
-  let tempCurrentIndex = 0
-
-  function _setStyle (type, attributes, index) {
+      type, src, text, styles
+    } = subStructureItem
     const commonClassName = type
     const currentCount = ++g_classNameCounter[type]
     const specificClassName = `${type}${currentCount}`
     const classNames = [commonClassName, specificClassName]
-    attributes.class = classNames.join(' ')
-    const styles = {}
-    const {top, left} = sortedDetailedStuff[index]
-    if (index) {
-      const {
-        bottom: prevBottom,
-        right: prevRight
-      } = sortedDetailedStuff[index - 1]
-      const marginTop = top - prevBottom
-      const marginLeft = left - prevRight
-      if (beyondPositiveError(marginTop)) {
-        styles.marginTop = marginTop
-      } else if (beyondPositiveError(marginLeft)) {
-        styles.marginLeft = marginLeft
-      }
-    }
-    if (!styles.marginTop) {
-      const marginTop = top - structureTop
-      if (beyondPositiveError(marginTop)) {
-        styles.marginTop = marginTop
-      }
-    }
-    if (!styles.marginLeft) {
-      const marginLeft = left - structureLeft
-      if (beyondPositiveError(marginLeft)) {
-        styles.marginLeft = marginLeft
-      }
-    }
-    setStylesGroup(specificClassName, styles)
-  }
-
-  htmlObjectGroup.forEach((htmlObject, index) => {
-    if (index < tempCurrentIndex) return
-    const {
-      attributes, content, type
-    } = htmlObject
+    const attributes = {class: classNames.join(' ')}
     switch (type) {
-      case 'text': {
-        let html = ''
-        for (
-          let i = index;
-          i < htmlObjectGroup.length;
-          i++
-        ) {
-          const tempHtmlObject = htmlObjectGroup[i]
-          const {content, type} = tempHtmlObject
-          if (type === 'text') {
-            html += content
-            if (i === htmlObjectGroup.length - 1) {
-              tempCurrentIndex = htmlObjectGroup.length
-              if (index !== 0) {
-                _setStyle('span', attributes, index)
-                html = generateHtmlTag(TAG_SPAN, attributes, html)
-              }
-            }
-          } else {
-            _setStyle('span', attributes, index)
-            html = generateHtmlTag(TAG_SPAN, attributes, html)
-            tempCurrentIndex = i - 1
-            break
-          }
-        }
-        structureHtml += html
+      case TYPE_INLINE_BLOCK.IMAGE:
+        attributes.src = src
         break
-      }
-      case 'image': {
-        _setStyle('img', attributes, index)
-        const html = generateHtmlTag(TAG_IMG, attributes)
-        structureHtml += html
-        tempCurrentIndex = index
-        break
-      }
     }
+    const html = generateHtmlTag(typeTagMap[type], attributes, text)
+    subStructureHtml += html
+    setStylesGroup(specificClassName, styles)
   })
-  return structureHtml
-}
-
-function getSortedDetailedStuff (detailedStuffIds) {
-  let sortedDetailedStuff = []
-  ;(_ => {
-    const detailedStuff = detailedStuffIds.map(id => {
-      const stuff = g_detailedStuff.find(tempStuff => {
-        return tempStuff.id === id
-      })
-      return stuff
-    })
-    if (detailedStuffIds.length > 1) {
-      const [stuff1, stuff2] = detailedStuff
-      let direction
-      if (
-        stuff1.top > stuff2.bottom ||
-        stuff2.top > stuff1.bottom
-      ) direction = 'vertical'
-      else if (
-        stuff1.left > stuff2.right ||
-        stuff2.left > stuff1.right
-      ) direction = 'horizontal'
-      if (!direction) {
-        console.warn('Direction empty in getSortedDetailedStuff.')
-        return
-      }
-      const directionPropMap = {
-        vertical: 'top',
-        horizontal: 'left'
-      }
-      const prop = directionPropMap[direction]
-      sortedDetailedStuff = detailedStuff
-        .sort((stuff1, stuff2) => stuff1[prop] - stuff2[prop])
-    } else {
-      sortedDetailedStuff = [...detailedStuff]
-    }
-  })()
-  return sortedDetailedStuff
+  return subStructureHtml
 }
 
 function generateHtmlTag (tag, attributes, content) {
@@ -299,14 +161,6 @@ function indentHtml (html) {
   }
   endProcess('indentHtml', _ => console.info(_))
   return indentedHtml
-}
-
-function beyondError (number) {
-  return Math.abs(number) > ERROR_PIXEL
-}
-
-function beyondPositiveError (number) {
-  return number > ERROR_PIXEL
 }
 
 function setStylesGroup (key, value) {
