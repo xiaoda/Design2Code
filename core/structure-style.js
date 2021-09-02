@@ -30,9 +30,8 @@ function addStyles (structure) {
 function recursivelyAddStyles (structure, parent) {
   structure.forEach((structureItem, index) => {
     const {
-      type, children,
-      top, bottom, left, right,
-      width, height
+      type, children, width, height,
+      top, bottom, left, right
     } = structureItem
     const styles = {}
     const preStyles = {}
@@ -42,34 +41,18 @@ function recursivelyAddStyles (structure, parent) {
 
     /* Padding or size */
     if (children.length) {
-      const childrenTop = Math.min(
-        ...children.map(child => child.top)
-      )
-      const childrenLeft = Math.min(
-        ...children.map(child => child.left)
-      )
-      const childrenRight = Math.max(
-        ...children.map(child => child.right)
-      )
-      const childrenBottom = Math.max(
-        ...children.map(child => child.bottom)
-      )
+      const childrenTop = Math.min(...children.map(child => child.top))
+      const childrenLeft = Math.min(...children.map(child => child.left))
+      const childrenRight = Math.max(...children.map(child => child.right))
+      const childrenBottom = Math.max(...children.map(child => child.bottom))
       const paddingTop = childrenTop - top
       const paddingLeft = childrenLeft - left
       const paddingRight = right - childrenRight
       const paddingBottom = bottom - childrenBottom
-      if (beyondError(paddingTop)) {
-        styles.paddingTop = paddingTop
-      }
-      if (beyondError(paddingLeft)) {
-        styles.paddingLeft = paddingLeft
-      }
-      if (beyondError(paddingRight)) {
-        styles.paddingRight = paddingRight
-      }
-      if (beyondError(paddingBottom)) {
-        styles.paddingBottom = paddingBottom
-      }
+      if (beyondError(paddingTop)) styles.paddingTop = paddingTop
+      if (beyondError(paddingLeft)) styles.paddingLeft = paddingLeft
+      if (beyondError(paddingRight)) styles.paddingRight = paddingRight
+      if (beyondError(paddingBottom)) styles.paddingBottom = paddingBottom
     } else {
       styles.width = width
       styles.height = height
@@ -77,41 +60,25 @@ function recursivelyAddStyles (structure, parent) {
 
     /* Margin */
     if (parent && structure.length > 1) {
-      let tempBottom = Math.min(
-        ...structure.map(item => item.top)
-      )
-      const structureAbove = structure.filter(item => {
-        return item.bottom < top
-      })
+      let tempBottom = Math.min(...structure.map(item => item.top))
+      const structureAbove = structure.filter(item => item.bottom < top)
       if (structureAbove.length) {
         structureAbove.forEach(item => {
-          if (item.bottom > tempBottom) {
-            tempBottom = item.bottom
-          }
+          if (item.bottom > tempBottom) tempBottom = item.bottom
         })
       }
       const marginTop = top - tempBottom
-      if (beyondError(marginTop)) {
-        styles.marginTop = marginTop
-      }
+      if (beyondError(marginTop)) styles.marginTop = marginTop
 
-      let tempRight = Math.min(
-        ...structure.map(item => item.left)
-      )
-      const leftSideStructure = structure.filter(item => {
-        return item.right < left
-      })
+      let tempRight = Math.min(...structure.map(item => item.left))
+      const leftSideStructure = structure.filter(item => item.right < left)
       if (leftSideStructure.length) {
         leftSideStructure.forEach(item => {
-          if (item.right > tempRight) {
-            tempRight = item.right
-          }
+          if (item.right > tempRight) tempRight = item.right
         })
       }
       const marginLeft = left - tempRight - 1
-      if (beyondError(marginLeft)) {
-        styles.marginLeft = marginLeft
-      }
+      if (beyondError(marginLeft)) styles.marginLeft = marginLeft
     }
 
     /* Background color */

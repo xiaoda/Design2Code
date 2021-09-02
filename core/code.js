@@ -44,9 +44,7 @@ function generateHtml (structure) {
 function recursivelyGenerateHtml (structure, parent) {
   let html = ''
   structure.forEach((structureItem, index) => {
-    const {
-      type, children, styles
-    } = structureItem
+    const {type, children, styles} = structureItem
     const commonClassName = type
     const currentCount = ++g_classNameCounter[type]
     const specificClassName = `${type}${currentCount}`
@@ -57,9 +55,7 @@ function recursivelyGenerateHtml (structure, parent) {
       recursivelyGenerateHtml(children, structureItem) :
       generateSubStructureHtml(structureItem.subStructure)
     )
-    const currentHtml = generateHtmlTag(
-      TAG_DIV, attributes, content
-    )
+    const currentHtml = generateHtmlTag(TAG_DIV, attributes, content)
     html += currentHtml
     setStylesGroup(specificClassName, styles)
   })
@@ -73,9 +69,7 @@ function generateSubStructureHtml (subStructure) {
     [TYPE_INLINE_BLOCK.IMAGE]: TAG_IMG
   }
   subStructure.forEach(subStructureItem => {
-    const {
-      type, src, text, styles
-    } = subStructureItem
+    const {type, src, text, styles} = subStructureItem
     const commonClassName = type
     const currentCount = ++g_classNameCounter[type]
     const specificClassName = `${type}${currentCount}`
@@ -114,43 +108,23 @@ function indentHtml (html) {
   let prevTagIsClosed = false
   for (let index in html) {
     index = Number(index)
-    const secondPrevLetter = (
-      index > 1 ?
-      html[index - 2] : null
-    )
-    const prevLetter = (
-      index > 0 ?
-      html[index - 1] : null
-    )
+    const secondPrevLetter = index > 1 ? html[index - 2] : null
+    const prevLetter = index > 0 ? html[index - 1] : null
     const letter = html[index]
-    const nextLetter = (
-      index < html.length - 1 ?
-      html[index + 1] : null
-    )
+    const nextLetter = index < html.length - 1 ? html[index + 1] : null
     /* For image tag */
-    if (
-      secondPrevLetter === '/' &&
-      prevLetter === '>' &&
-      letter === '<'
-    ) {
+    if (secondPrevLetter === '/' && prevLetter === '>' && letter === '<') {
       indentSize -= 2
       prevTagIsClosed = true
     }
     /* For starter tag */
-    if (
-      prevLetter === '>' &&
-      letter === '<' &&
-      nextLetter !== '/'
-    ) {
+    if (prevLetter === '>' && letter === '<' && nextLetter !== '/') {
       indentSize += 2
       indentedHtml += `\n${' '.repeat(indentSize)}`
       prevTagIsClosed = false
     }
     /* For closer tag */
-    if (
-      letter === '<' &&
-      nextLetter === '/'
-    ) {
+    if (letter === '<' && nextLetter === '/') {
       if (prevTagIsClosed) {
         indentedHtml += `\n${' '.repeat(indentSize)}`
       }
@@ -189,9 +163,7 @@ span, img {
     css += `.${className} {\n`
     for (let key in styles) {
       let value = styles[key]
-      if (typeof value === 'number') {
-        value += 'px'
-      }
+      if (typeof value === 'number') value += 'px'
       key = key.replace(/[A-Z]/g, match => {
         return `-${match.toLowerCase()}`
       })
