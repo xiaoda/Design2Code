@@ -4,7 +4,7 @@ import {
 import {checkDesign} from './core/prepare.js'
 import {extractStuff} from './core/stuff.js'
 import {extractStructure} from './core/structure.js'
-import {addStylesToStructure} from './core/structure-style.js'
+import {addStylesToStructure} from './core/structure-enhance.js'
 import {generateCode} from './core/code.js'
 
 /* Config */

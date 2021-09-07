@@ -3,7 +3,7 @@ import {
   imageDataToDataUrl
 } from '../utils/index.js'
 import {TYPE_STRUCTURE} from './structure.js'
-import {TYPE_INLINE_BLOCK} from './structure-style.js'
+import {TYPE_INLINE_BLOCK} from './structure-enhance.js'
 
 const ERROR_PIXEL = 2
 const TAG_DIV = '<div${attributes}>${content}</div>'
@@ -43,33 +43,18 @@ function generateHtml (structure) {
 
 function recursivelyGenerateHtml (structure, parent) {
   let html = ''
-  structure.forEach((structureItem, index) => {
-    const {type, children, styles} = structureItem
-    const commonClassName = type
-    const currentCount = ++g_classNameCounter[type]
-    const specificClassName = `${type}${currentCount}`
-    const classNames = [commonClassName, specificClassName]
-    const attributes = {class: classNames.join(' ')}
-    const content = (
-      children.length ?
-      recursivelyGenerateHtml(children, structureItem) :
-      generateSubStructureHtml(structureItem.subStructure)
-    )
-    const currentHtml = generateHtmlTag(TAG_DIV, attributes, content)
-    html += currentHtml
-    setStylesGroup(specificClassName, styles)
-  })
-  return html
-}
-
-function generateSubStructureHtml (subStructure) {
-  let subStructureHtml = ''
   const typeTagMap = {
+    [TYPE_STRUCTURE.BLOCK]: TAG_DIV,
+    [TYPE_STRUCTURE.ROW]: TAG_DIV,
+    [TYPE_STRUCTURE.COLUMN]: TAG_DIV,
     [TYPE_INLINE_BLOCK.TEXT]: TAG_SPAN,
     [TYPE_INLINE_BLOCK.IMAGE]: TAG_IMG
   }
-  subStructure.forEach(subStructureItem => {
-    const {type, src, text, styles} = subStructureItem
+  structure.forEach((structureItem, index) => {
+    const {
+      type, src, text, styles,
+      children, subStructure
+    } = structureItem
     const commonClassName = type
     const currentCount = ++g_classNameCounter[type]
     const specificClassName = `${type}${currentCount}`
@@ -80,11 +65,19 @@ function generateSubStructureHtml (subStructure) {
         attributes.src = src
         break
     }
-    const html = generateHtmlTag(typeTagMap[type], attributes, text)
-    subStructureHtml += html
+    let content
+    if (children && children.length) {
+      content = recursivelyGenerateHtml(children, structureItem)
+    } else if (subStructure && subStructure.length) {
+      content = recursivelyGenerateHtml(subStructure, structureItem)
+    } else {
+      content = text
+    }
+    const currentHtml = generateHtmlTag(typeTagMap[type], attributes, content)
+    html += currentHtml
     setStylesGroup(specificClassName, styles)
   })
-  return subStructureHtml
+  return html
 }
 
 function generateHtmlTag (tag, attributes, content) {

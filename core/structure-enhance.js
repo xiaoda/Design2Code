@@ -16,25 +16,25 @@ let g_detailedStuff
 
 export function addStylesToStructure (structure, detailedStuff) {
   g_detailedStuff = detailedStuff
+  enhanceBasics(structure)
   addStyles(structure)
-  adjustStyles(structure)
+  processStyles(structure)
   return structure
 }
 
-function addStyles (structure) {
-  startProcess('addStyles', _ => console.info(_))
-  recursivelyAddStyles(structure)
-  endProcess('addStyles', _ => console.info(_))
+function enhanceBasics (structure) {
+  startProcess('enhanceBasics', _ => console.info(_))
+  recursivelyEnhanceBasics(structure)
+  endProcess('enhanceBasics', _ => console.info(_))
 }
 
-function recursivelyAddStyles (structure, parent) {
-  structure.forEach((structureItem, index) => {
+function recursivelyEnhanceBasics (structure, parent) {
+  structure.forEach(structureItem => {
     const {
       type, children, width, height,
       top, bottom, left, right
     } = structureItem
     const styles = {}
-    const preStyles = {}
     if (type === TYPE_STRUCTURE.ROW && children.length) {
       styles.display = 'flex'
     }
@@ -81,67 +81,13 @@ function recursivelyAddStyles (structure, parent) {
       if (beyondError(marginLeft)) styles.marginLeft = marginLeft
     }
 
-    /* Background color */
-    const backgroundColor = getBackgroundColor(structureItem)
-    preStyles.backgroundColor = backgroundColor
-
     structureItem.styles = styles
-    structureItem.preStyles = preStyles
-    if (children.length) {
-      recursivelyAddStyles(children, structureItem)
+    if (children && children.length) {
+      recursivelyEnhanceBasics(children, structureItem)
     } else {
       addSubStructure(structureItem)
     }
   })
-}
-
-function getBackgroundColor (structure) {
-  const {
-    left, top, width, height,
-    children
-  } = structure
-  const childrenAreaGroup = []
-  children.forEach(child => {
-    const {
-      top: childTop,
-      left: childLeft,
-      width: childWidth,
-      height: childHeight
-    } = child
-    const loopStart = childTop - top
-    const loopEnd = loopStart + childHeight
-    for (let i = loopStart; i <= loopEnd; i += 1) {
-      const rangeStart = i * width + (childLeft - left)
-      const rangeEnd = rangeStart + childWidth
-      const area = [rangeStart, rangeEnd]
-      childrenAreaGroup.push(area)
-    }
-  })
-
-  function _inChildrenArea (index) {
-    return childrenAreaGroup.some(area => {
-      const [start, end] = area
-      return index >= start && index <= end
-    })
-  }
-
-  const colorData = new ColorCounter()
-  const imageData = window.ctx.getImageData(
-    left, top, width, height
-  )
-  const {data} = imageData
-  for (let i = 0; i < data.length; i += 4) {
-    const index = i / 4
-    if (!_inChildrenArea(index)) {
-      const r = data[i]
-      const g = data[i + 1]
-      const b = data[i + 2]
-      const hex = rgbToHex(r, g, b)
-      colorData.addValue(hex)
-    }
-  }
-  const backgroundColor = colorData.getFirstValueByCount()
-  return backgroundColor
 }
 
 function addSubStructure (structure) {
@@ -293,10 +239,117 @@ function getSortedDetailedStuff (detailedStuffIds) {
   return sortedDetailedStuff
 }
 
-function adjustStyles (structure) {
-  startProcess('adjustStyles', _ => console.info(_))
-  // todo
-  endProcess('adjustStyles', _ => console.info(_))
+function addStyles (structure) {
+  startProcess('addStyles', _ => console.info(_))
+  recursivelyAddStyles(structure)
+  endProcess('addStyles', _ => console.info(_))
+}
+
+function recursivelyAddStyles (structure) {
+  structure.forEach(structureItem => {
+    const {
+      type, width, height,
+      top, bottom, left, right,
+      children, subStructure
+    } = structureItem
+    const hasChildrenOrSubStructure = (
+      (children && children.length) ||
+      (subStructure && subStructure.length)
+    )
+    const styles = {}
+    const preStyles = {}
+
+    /* Background color */
+    if (hasChildrenOrSubStructure) {
+      const backgroundColor = getBackgroundColor(structureItem)
+      preStyles.backgroundColor = backgroundColor
+    }
+
+    structureItem.styles = {...structureItem.styles, styles}
+    structureItem.preStyles = preStyles
+    if (children && children.length) {
+      recursivelyAddStyles(children)
+    } else if (subStructure && subStructure.length) {
+      recursivelyAddStyles(subStructure)
+    }
+  })
+}
+
+function getBackgroundColor (structure) {
+  const {
+    left, top, width, height,
+    children, subStructure
+  } = structure
+  const childrenAreaGroup = []
+  let childrenOrSubStructure
+  if (children && children.length) {
+    childrenOrSubStructure = children
+  } else if (subStructure && subStructure.length) {
+    childrenOrSubStructure = subStructure
+  }
+  if (childrenOrSubStructure && childrenOrSubStructure.length) {
+    childrenOrSubStructure.forEach(child => {
+      const {
+        top: childTop,
+        left: childLeft,
+        width: childWidth,
+        height: childHeight
+      } = child
+      const loopStart = childTop - top
+      const loopEnd = loopStart + childHeight
+      for (let i = loopStart; i <= loopEnd; i += 1) {
+        const rangeStart = i * width + (childLeft - left)
+        const rangeEnd = rangeStart + childWidth
+        const area = [rangeStart, rangeEnd]
+        childrenAreaGroup.push(area)
+      }
+    })
+  }
+
+  function _inChildrenArea (index) {
+    return childrenAreaGroup.some(area => {
+      const [start, end] = area
+      return index >= start && index <= end
+    })
+  }
+
+  const colorData = new ColorCounter()
+  const imageData = window.ctx.getImageData(
+    left, top, width, height
+  )
+  const {data} = imageData
+  for (let i = 0; i < data.length; i += 4) {
+    const index = i / 4
+    if (!_inChildrenArea(index)) {
+      const r = data[i]
+      const g = data[i + 1]
+      const b = data[i + 2]
+      const hex = rgbToHex(r, g, b)
+      colorData.addValue(hex)
+    }
+  }
+  const backgroundColor = colorData.getFirstValueByCount()
+  return backgroundColor
+}
+
+function processStyles (structure) {
+  startProcess('processStyles', _ => console.info(_))
+  recursivelyProcessStyles(structure)
+  endProcess('processStyles', _ => console.info(_))
+}
+
+function recursivelyProcessStyles (structure) {
+  structure.forEach(structureItem => {
+    const {
+      styles, preStyles, children, subStructure
+    } = structureItem
+
+    if (children && children.length) {
+      recursivelyProcessStyles(children)
+    } else if (subStructure && subStructure.length) {
+      recursivelyProcessStyles(subStructure)
+    }
+  })
 }
 
 function beyondError (number) {
