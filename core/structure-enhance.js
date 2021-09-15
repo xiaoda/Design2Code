@@ -239,6 +239,14 @@ function getSortedDetailedStuff (detailedStuffIds) {
   return sortedDetailedStuff
 }
 
+function beyondError (number) {
+  return Math.abs(number) > ERROR_PIXEL
+}
+
+function beyondPositiveError (number) {
+  return number > ERROR_PIXEL
+}
+
 function addStyles (structure) {
   startProcess('addStyles', _ => console.info(_))
   recursivelyAddStyles(structure)
@@ -262,10 +270,11 @@ function recursivelyAddStyles (structure) {
     /* Background color */
     if (hasChildrenOrSubStructure) {
       const backgroundColor = getBackgroundColor(structureItem)
+      styles.backgroundColor = backgroundColor
       preStyles.backgroundColor = backgroundColor
     }
 
-    structureItem.styles = {...structureItem.styles, styles}
+    structureItem.styles = {...structureItem.styles, ...styles}
     structureItem.preStyles = preStyles
     if (children && children.length) {
       recursivelyAddStyles(children)
@@ -328,7 +337,7 @@ function getBackgroundColor (structure) {
       colorData.addValue(hex)
     }
   }
-  const backgroundColor = colorData.getFirstValueByCount()
+  const backgroundColor = `#${colorData.getFirstValueByCount()}`
   return backgroundColor
 }
 
@@ -343,19 +352,40 @@ function recursivelyProcessStyles (structure) {
     const {
       styles, preStyles, children, subStructure
     } = structureItem
-
+    let childrenOrSubStructure
     if (children && children.length) {
-      recursivelyProcessStyles(children)
+      childrenOrSubStructure = children
     } else if (subStructure && subStructure.length) {
-      recursivelyProcessStyles(subStructure)
+      childrenOrSubStructure = subStructure
+    }
+    const {backgroundColor} = preStyles
+
+    /* Background color */
+    if (backgroundColor) {
+      const backgroundColorGroup = [backgroundColor]
+      childrenOrSubStructure.forEach(child => {
+        const {preStyles: childPreStyles} = child
+        const {backgroundColor: childBackgroundColor} = childPreStyles
+        if (
+          childBackgroundColor &&
+          !backgroundColorGroup.includes(childBackgroundColor)
+        ) {
+          backgroundColorGroup.push(childBackgroundColor)
+        }
+      })
+      if (backgroundColorGroup.length === 1) {
+        childrenOrSubStructure.forEach(child => {
+          const {styles: childStyles} = child
+          const {backgroundColor: childBackgroundColor} = childStyles
+          if (childBackgroundColor) {
+            delete childStyles.backgroundColor
+          }
+        })
+      }
+    }
+
+    if (childrenOrSubStructure && childrenOrSubStructure.length) {
+      recursivelyProcessStyles(childrenOrSubStructure)
     }
   })
-}
-
-function beyondError (number) {
-  return Math.abs(number) > ERROR_PIXEL
-}
-
-function beyondPositiveError (number) {
-  return number > ERROR_PIXEL
 }
