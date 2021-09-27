@@ -1,6 +1,7 @@
 import {
   startProcess, endProcess,
-  rgbToHex, imageDataToDataUrl
+  rgbToHex, mixColors, accumulateColors,
+  getColorsStandardVariance, imageDataToDataUrl
 } from '../utils/index.js'
 import ColorCounter from '../utils/color-counter.js'
 import {TYPE_STRUCTURE} from './structure.js'
@@ -10,6 +11,8 @@ export const TYPE_INLINE_BLOCK = {
   IMAGE: 'image',
   TEXT: 'text'
 }
+const VARIANCE_BORDER_COLOR_LIMIT = 10
+const VARIANCE_SAME_COLOR_LIMIT = 2
 const ERROR_PIXEL = 2
 
 let g_detailedStuff
@@ -122,6 +125,18 @@ function addSubStructure (structure) {
     }
   })
 
+  function _getPosition (startIndex, endIndex) {
+    if (!endIndex) endIndex = startIndex
+    const {top, left} = sortedDetailedStuff[startIndex]
+    const {right, bottom} = sortedDetailedStuff[endIndex]
+    const width = right - left + 1
+    const height = bottom - top + 1
+    const position = {
+      top, left, right, bottom, width, height
+    }
+    return position
+  }
+
   function _getStyles (index) {
     const styles = {}
     const {top, left} = sortedDetailedStuff[index]
@@ -163,7 +178,6 @@ function addSubStructure (structure) {
     switch (type) {
       case TYPE_INLINE_BLOCK.TEXT: {
         let text = ''
-        let styles = {}
         for (
           let i = index;
           i < htmlObjectGroup.length;
@@ -174,15 +188,19 @@ function addSubStructure (structure) {
           if (type === TYPE_INLINE_BLOCK.TEXT) {
             text += content
             if (i === htmlObjectGroup.length - 1) {
-              styles = _getStyles(index)
-              subStructureGroup.push({type, text, styles})
+              const position = _getPosition(index, i)
+              const styles = _getStyles(index)
+              subStructureGroup.push({
+                type, text, styles, ...position
+              })
               tempCurrentIndex = htmlObjectGroup.length
             }
           } else {
-            styles = _getStyles(index)
+            const position = _getPosition(index, i)
+            const styles = _getStyles(index)
             subStructureGroup.push({
               type: TYPE_INLINE_BLOCK.TEXT,
-              text, styles
+              text, styles, ...position
             })
             tempCurrentIndex = i - 1
             break
@@ -191,8 +209,11 @@ function addSubStructure (structure) {
         break
       }
       case TYPE_INLINE_BLOCK.IMAGE: {
+        const position = _getPosition(index)
         const styles = _getStyles(index)
-        subStructureGroup.push({type, src, styles})
+        subStructureGroup.push({
+          type, src, styles, ...position
+        })
         tempCurrentIndex = index
         break
       }
@@ -270,8 +291,18 @@ function recursivelyAddStyles (structure) {
     /* Background color */
     if (hasChildrenOrSubStructure) {
       const backgroundColor = getBackgroundColor(structureItem)
-      styles.backgroundColor = backgroundColor
-      preStyles.backgroundColor = backgroundColor
+      if (backgroundColor) {
+        styles.backgroundColor = `#${backgroundColor}`
+        preStyles.backgroundColor = backgroundColor
+      }
+    }
+
+    /* Border */
+    if (hasChildrenOrSubStructure) {
+      const {backgroundColor} = preStyles
+      if (backgroundColor) {
+        detectBorder(structureItem, backgroundColor)
+      }
     }
 
     structureItem.styles = {...structureItem.styles, ...styles}
@@ -337,8 +368,166 @@ function getBackgroundColor (structure) {
       colorData.addValue(hex)
     }
   }
-  const backgroundColor = `#${colorData.getFirstValueByCount()}`
+  const backgroundColor = (
+    colorData.totalCount ?
+    colorData.getFirstValueByCount() :
+    null
+  )
   return backgroundColor
+}
+
+function detectBorder (structure, backgroundColor) {
+  const {
+    top, left, right, bottom, width, height,
+    children, subStructure
+  } = structure
+  const imageData = window.ctx.getImageData(
+    left, top, width, height
+  )
+  const {data} = imageData
+  const result = {
+    hasBorder: {},
+    borderWidth: {},
+    borderRadius: {},
+    borderColor: {}
+  }
+  let childrenOrSubStructure
+  if (children && children.length) {
+    childrenOrSubStructure = children
+  } else if (subStructure && subStructure.length) {
+    childrenOrSubStructure = subStructure
+  }
+
+  const overlap = {
+    top: false,
+    bottom: false,
+    left: false,
+    right: false
+  }
+  if (
+    childrenOrSubStructure &&
+    childrenOrSubStructure.length
+  ) {
+    for (let name in overlap) {
+      if (childrenOrSubStructure.some(child => {
+        return child[name] === structure[name]
+      })) {
+        overlap[name] = true
+      }
+    }
+  }
+
+
+  function _setDefaultBorderProperties (name) {
+    result.hasBorder[name] = false
+    result.borderWidth[name] = 0
+    result.borderRadius[name] = 0
+    result.borderColor[name] = null
+  }
+
+  function _processBorderProperties (
+    name,
+    start1, stopFun1, step1,
+    start2, stopFun2, step2,
+    indexFun
+  ) {
+    if (overlap[name]) {
+      return _setDefaultBorderProperties(name)
+    }
+    const borderColorGroup = []
+    let hasBorder = false
+    let borderWidth = 0
+    let borderColor = null
+    let loopCount = 0
+    for (let i = start1; stopFun1(i); i += step1) {
+      const colorData = new ColorCounter()
+      for (let j = start2; stopFun2(j); j += step2) {
+        const index = indexFun(i, j) * 4
+        const r = data[index]
+        const g = data[index + 1]
+        const b = data[index + 2]
+        const hex = rgbToHex(r, g, b)
+        colorData.addValue(hex)
+      }
+      const possibleBorderColor = colorData.getFirstValueByCount()
+      const colorsVariance = getColorsStandardVariance(
+        possibleBorderColor, backgroundColor
+      )
+      if (colorsVariance > VARIANCE_BORDER_COLOR_LIMIT) {
+        hasBorder = true
+        borderColorGroup.push(possibleBorderColor)
+      } else {
+        if (loopCount) break
+      }
+      loopCount++
+    }
+    switch (borderColorGroup.length) {
+      case 0:
+        break
+      case 1:
+        borderWidth = 1
+        borderColor = borderColorGroup[0]
+        break
+      case 2: {
+        const [color1, color2] = borderColorGroup
+        const colorsVariance = getColorsStandardVariance(
+          color1, color2
+        )
+        if (colorsVariance > VARIANCE_SAME_COLOR_LIMIT) {
+          borderWidth = 1
+          borderColor = accumulateColors(color1, color2)
+        } else {
+          borderWidth = 2
+          borderColor = mixColors(color1, color2)
+        }
+        break
+      }
+      default: {
+        const [color1, color2] = borderColorGroup
+        const colorsVariance = getColorsStandardVariance(
+          color1, color2
+        )
+        borderWidth = (
+          colorsVariance > VARIANCE_SAME_COLOR_LIMIT ?
+          borderColorGroup.length - 1 :
+          borderColorGroup.length
+        )
+        borderColor = color2
+      }
+    }
+    result.hasBorder[name] = hasBorder
+    result.borderWidth[name] = borderWidth
+    result.borderColor[name] = borderColor
+  }
+
+  _processBorderProperties(
+    'top',
+    0, i => i < height, 1,
+    0, j => j < width, 1,
+    (i, j) => i * width + j
+  )
+  _processBorderProperties(
+    'bottom',
+    height - 1, i => i >= 0, -1,
+    0, j => j < width, 1,
+    (i, j) => i * width + j
+  )
+  _processBorderProperties(
+    'left',
+    0, i => i < width, 1,
+    0, j => j < height, 1,
+    (i, j) => j * width + i
+  )
+  _processBorderProperties(
+    'right',
+    width - 1, i => i >= 0, -1,
+    0, j => j < height, 1,
+    (i, j) => j * width + i
+  )
+
+  if (Object.values(result.hasBorder).includes(true)) {
+    console.log('result', result)
+  }
 }
 
 function processStyles (structure) {
@@ -373,7 +562,7 @@ function recursivelyProcessStyles (structure) {
           backgroundColorGroup.push(childBackgroundColor)
         }
       })
-      if (backgroundColorGroup.length === 1) {
+      if (backgroundColorGroup.length <= 1) {
         childrenOrSubStructure.forEach(child => {
           const {styles: childStyles} = child
           const {backgroundColor: childBackgroundColor} = childStyles

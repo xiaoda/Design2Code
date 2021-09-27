@@ -176,8 +176,8 @@ function analyzeStructure (mergedStuff, imageData) {
   const structure = recursivelyAnalyze(mergedStuff, {
     top: 0,
     left: 0,
-    right: width,
-    bottom: height
+    right: width - 1,
+    bottom: height - 1
   })
   endProcess('analyzeStructure', _ => console.info(_))
   return structure

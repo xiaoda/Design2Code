@@ -25,36 +25,31 @@ export default class ColorCounter extends ValueCounter {
     })
   }
 
-  getVariance () {
+  getStandardVariance () {
     return this.useCache('variance', _ => {
       const {
         r: averageR,
         g: averageG,
         b: averageB
       } = hexToRgb(this.getAverage())
-      const varianceSum = {
-        r: 0, g: 0, b: 0
-      }
+      let varianceSum = 0
       for (const hex in this.valueCountMap) {
         const {r, g, b} = hexToRgb(hex)
         const count = this.valueCountMap[hex]
-        varianceSum.r += (r - averageR) ** 2 * count
-        varianceSum.g += (g - averageG) ** 2 * count
-        varianceSum.b += (b - averageB) ** 2 * count
+        const variance = (
+          (r - averageR) ** 2 +
+          (g - averageG) ** 2 +
+          (b - averageB) ** 2
+        ) ** 0.5 * count
+        varianceSum += variance
       }
-      const variance = (
-        varianceSum.r ** 2 +
-        varianceSum.g ** 2 +
-        varianceSum.b ** 2
-      ) ** 0.5 / this.totalCount
-      return variance
+      const averageVariance = varianceSum / this.totalCount
+      return averageVariance
     })
   }
 
-  getVarianceFromAnother (another) {
-    const varianceSum = {
-      r: 0, g: 0, b: 0
-    }
+  getStandardVarianceFromAnother (another) {
+    let varianceSum = 0
     for (let i = 0; i < this.totalCount; i++) {
       const {r, g, b} = hexToRgb(this.allValues[i])
       const {
@@ -62,16 +57,18 @@ export default class ColorCounter extends ValueCounter {
         g: anotherG,
         b: anotherB
       } = hexToRgb(another.allValues[i])
-      varianceSum.r += (r - anotherR) ** 2
-      varianceSum.g += (g - anotherG) ** 2
-      varianceSum.b += (b - anotherB) ** 2
+      const averageR = (r + anotherR) / 2
+      const averageG = (g + anotherG) / 2
+      const averageB = (b + anotherB) / 2
+      const variance = (
+        (r - averageR) ** 2 +
+        (g - averageG) ** 2 +
+        (b - averageB) ** 2
+      ) ** 0.5
+      varianceSum += variance
     }
-    const variance = (
-      varianceSum.r ** 2 +
-      varianceSum.g ** 2 +
-      varianceSum.b ** 2
-    ) ** 0.5 / this.totalCount
-    return variance
+    const averageVariance = varianceSum / this.totalCount
+    return averageVariance
   }
 
   getStandardDeviation () {

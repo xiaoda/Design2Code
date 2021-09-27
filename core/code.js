@@ -30,7 +30,7 @@ export function generateCode (structure, detailedStuff) {
   const stylesGroup = getStylesGroup()
   const css = generateCss(stylesGroup)
   const completeCode = generateCompleteCode(indentedHtml, css)
-  downloadFile(completeCode, 'demo.html', 'text/html')
+  // downloadFile(completeCode, 'demo.html', 'text/html')
   return completeCode
 }
 

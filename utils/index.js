@@ -60,19 +60,59 @@ function hexToDec (hex) {
   return parseInt(hex, 16)
 }
 
-export function getColorsVariance (colorA, colorB) {
-  const {r, g, b} = hexToRgb(colorA)
-  const {
-    r: anotherR,
-    g: anotherG,
-    b: anotherB
-  } = hexToRgb(colorB)
-  const variance = (
-    (r - anotherR) ** 2 +
-    (g - anotherG) ** 2 +
-    (b - anotherB) ** 2
-  ) ** 0.5
-  return variance
+export function mixColors (...colors) {
+  const colorSum = {r: 0, g: 0, b: 0}
+  colors.forEach(color => {
+    const {r, g, b} = hexToRgb(color)
+    colorSum.r += r
+    colorSum.g += g
+    colorSum.b += b
+  })
+  const averageColor = {
+    r: Math.round(colorSum.r / colors.length),
+    g: Math.round(colorSum.g / colors.length),
+    b: Math.round(colorSum.b / colors.length)
+  }
+  const mixedColor = rgbToHex(
+    averageColor.r, averageColor.g, averageColor.b
+  )
+  return mixedColor
+}
+
+export function accumulateColors (...colors) {
+  const colorSum = {r: 0, g: 0, b: 0}
+  colors.forEach(color => {
+    const {r, g, b} = hexToRgb(color)
+    colorSum.r += r
+    colorSum.g += g
+    colorSum.b += b
+  })
+  const maxLimit = 255
+  const limitedColor = {
+    r: colorSum.r > maxLimit ? maxLimit : colorSum.r,
+    g: colorSum.g > maxLimit ? maxLimit : colorSum.g,
+    b: colorSum.b > maxLimit ? maxLimit : colorSum.b,
+  }
+  const accumulatedColor = rgbToHex(
+    limitedColor.r, limitedColor.g, limitedColor.b
+  )
+  return accumulatedColor
+}
+
+export function getColorsStandardVariance (...colors) {
+  const averageColor = hexToRgb(mixColors(...colors))
+  let varianceSum = 0
+  colors.forEach(color => {
+    const {r, g, b} = hexToRgb(color)
+    const variance = (
+      (r - averageColor.r) ** 2 +
+      (g - averageColor.g) ** 2 +
+      (b - averageColor.b) ** 2
+    ) ** 0.5
+    varianceSum += variance
+  })
+  const averageVariance = varianceSum / colors.length
+  return averageVariance
 }
 
 export function imageDataToDataUrl (imageData) {

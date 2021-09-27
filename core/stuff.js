@@ -29,9 +29,6 @@ export function extractStuff (imageData) {
 function detectEdge (imageData) {
   startProcess('detectEdge', _ => console.info(_))
   const edgeImageData = sobel(imageData)
-  if (window.processCtx) {
-    window.processCtx.putImageData(edgeImageData, 0, 0)
-  }
   endProcess('detectEdge', _ => console.info(_))
   return edgeImageData
 }
@@ -329,8 +326,8 @@ function generateDetailedStuff (processedStuff) {
         features.push(feature)
       }
     })
-    const height = bottom - top + 1
-    const width = right - left + 1
+    let height = bottom - top + 1
+    let width = right - left + 1
     if (
       width < PIXEL_STUFF_LIMIT &&
       height < PIXEL_STUFF_LIMIT
@@ -350,6 +347,14 @@ function generateDetailedStuff (processedStuff) {
       bottomCoverage > RATIO_FULL_LIMIT &&
       features.every(({range}) => range / width > RATIO_FULL_LIMIT)
     ) type = TYPE_STUFF.BLOCK
+    if (type !== TYPE_STUFF.BOUNDARY) {
+      top ++
+      left ++
+      right --
+      bottom --
+      width -= 2
+      height -= 2
+    }
     const stuffToPush = {
       id, processedStuffIndex,
       top, bottom, left, right,
@@ -374,7 +379,7 @@ function highlightStuff (edgeImageData, detailedStuff) {
   startProcess('highlightStuff', _ => console.info(_))
   const {width, height, data} = edgeImageData
   function highlight (start, stop, step) {
-    for (let i = start; i < stop; i += step) {
+    for (let i = start; i <= stop; i += step) {
       const index = i * 4
       data[index] = 0
       data[index + 1] = data[index + 2] = 255

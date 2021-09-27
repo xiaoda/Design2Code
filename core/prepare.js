@@ -5,7 +5,7 @@ import ColorCounter from '../utils/color-counter.js'
 
 const PIXEL_EXTRA_LINE_LIMIT = 4
 const VARIANCE_MIN_LIMIT = 1
-const VARIANCE_MAX_LIMIT = 100
+const VARIANCE_MAX_LIMIT = 30
 
 export function checkDesign (imageData) {
   imageData = checkBoundary(imageData)
@@ -78,11 +78,11 @@ function checkExtraLine (imageData, direction) {
         lineDataGroup.length - 1
       ]
       const lastLineAverage = lastLineData.getAverage()
-      const lastLineVariance = lastLineData.getVariance()
+      const lastLineVariance = lastLineData.getStandardVariance()
       const lineAverage = lineData.getAverage()
-      const lineVariance = lineData.getVariance()
+      const lineVariance = lineData.getStandardVariance()
       const varianceOfLines = lineData
-        .getVarianceFromAnother(lastLineData)
+        .getStandardVarianceFromAnother(lastLineData)
       const conditionA = (
         lastLineVariance < VARIANCE_MIN_LIMIT &&
         lineVariance > VARIANCE_MAX_LIMIT
