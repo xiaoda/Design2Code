@@ -1,5 +1,5 @@
 import {
-  startProcess, endProcess,
+  startProcess, endProcess, capitalize,
   rgbToHex, mixColors, accumulateColors,
   getColorsStandardVariance, imageDataToDataUrl
 } from '../utils/index.js'
@@ -12,6 +12,7 @@ export const TYPE_INLINE_BLOCK = {
   TEXT: 'text'
 }
 const VARIANCE_BORDER_COLOR_LIMIT = 10
+const VARIANCE_BORDER_RADIUS_COLOR_LIMIT = 20
 const VARIANCE_SAME_COLOR_LIMIT = 2
 const ERROR_PIXEL = 2
 
@@ -301,7 +302,19 @@ function recursivelyAddStyles (structure) {
     if (hasChildrenOrSubStructure) {
       const {backgroundColor} = preStyles
       if (backgroundColor) {
-        detectBorder(structureItem, backgroundColor)
+        const borderProperties = detectBorder(
+          structureItem, backgroundColor
+        )
+        Object.keys(borderProperties.hasBorder).forEach(name => {
+          if (borderProperties.hasBorder[name]) {
+            const width = borderProperties.borderWidth[name]
+            const color = borderProperties.borderColor[name]
+            styles[`border${capitalize(name)}`] = `${width}px solid #${color}`
+          }
+        })
+        if (borderProperties.borderRadius) {
+          styles.borderRadius = `${borderProperties.borderRadius}px`
+        }
       }
     }
 
@@ -385,12 +398,6 @@ function detectBorder (structure, backgroundColor) {
     left, top, width, height
   )
   const {data} = imageData
-  const result = {
-    hasBorder: {},
-    borderWidth: {},
-    borderRadius: {},
-    borderColor: {}
-  }
   let childrenOrSubStructure
   if (children && children.length) {
     childrenOrSubStructure = children
@@ -409,19 +416,24 @@ function detectBorder (structure, backgroundColor) {
     childrenOrSubStructure.length
   ) {
     for (let name in overlap) {
-      if (childrenOrSubStructure.some(child => {
-        return child[name] === structure[name]
-      })) {
+      const overlapExisted = childrenOrSubStructure
+        .some(child => child[name] === structure[name])
+      if (overlapExisted) {
         overlap[name] = true
       }
     }
   }
 
+  const result = {
+    hasBorder: {},
+    borderWidth: {},
+    borderColor: {},
+    borderRadius: 0
+  }
 
   function _setDefaultBorderProperties (name) {
     result.hasBorder[name] = false
     result.borderWidth[name] = 0
-    result.borderRadius[name] = 0
     result.borderColor[name] = null
   }
 
@@ -450,10 +462,10 @@ function detectBorder (structure, backgroundColor) {
         colorData.addValue(hex)
       }
       const possibleBorderColor = colorData.getFirstValueByCount()
-      const colorsVariance = getColorsStandardVariance(
+      const colorsStandardVariance = getColorsStandardVariance(
         possibleBorderColor, backgroundColor
       )
-      if (colorsVariance > VARIANCE_BORDER_COLOR_LIMIT) {
+      if (colorsStandardVariance > VARIANCE_BORDER_COLOR_LIMIT) {
         hasBorder = true
         borderColorGroup.push(possibleBorderColor)
       } else {
@@ -470,10 +482,10 @@ function detectBorder (structure, backgroundColor) {
         break
       case 2: {
         const [color1, color2] = borderColorGroup
-        const colorsVariance = getColorsStandardVariance(
+        const colorsStandardVariance = getColorsStandardVariance(
           color1, color2
         )
-        if (colorsVariance > VARIANCE_SAME_COLOR_LIMIT) {
+        if (colorsStandardVariance > VARIANCE_SAME_COLOR_LIMIT) {
           borderWidth = 1
           borderColor = accumulateColors(color1, color2)
         } else {
@@ -484,11 +496,11 @@ function detectBorder (structure, backgroundColor) {
       }
       default: {
         const [color1, color2] = borderColorGroup
-        const colorsVariance = getColorsStandardVariance(
+        const colorsStandardVariance = getColorsStandardVariance(
           color1, color2
         )
         borderWidth = (
-          colorsVariance > VARIANCE_SAME_COLOR_LIMIT ?
+          colorsStandardVariance > VARIANCE_SAME_COLOR_LIMIT ?
           borderColorGroup.length - 1 :
           borderColorGroup.length
         )
@@ -525,9 +537,27 @@ function detectBorder (structure, backgroundColor) {
     (i, j) => j * width + i
   )
 
-  if (Object.values(result.hasBorder).includes(true)) {
-    console.log('result', result)
+  const distinguishColor = (
+    result.hasBorder.top ?
+    result.borderColor.top :
+    backgroundColor
+  )
+  for (let i = 0; i < width; i++) {
+    const index = i * 4
+    const r = data[index]
+    const g = data[index + 1]
+    const b = data[index + 2]
+    const hex = rgbToHex(r, g, b)
+    const colorsStandardVariance = getColorsStandardVariance(
+      hex, distinguishColor
+    )
+    if (colorsStandardVariance < VARIANCE_BORDER_RADIUS_COLOR_LIMIT) {
+      result.borderRadius = i
+      break
+    }
   }
+
+  return result
 }
 
 function processStyles (structure) {

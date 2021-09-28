@@ -18,6 +18,11 @@ export function endProcess (name, callback) {
   else console.info(text)
 }
 
+export function capitalize (string) {
+  const capitalizedString = `${string[0].toUpperCase()}${string.slice(1)}`
+  return capitalizedString
+}
+
 export function generateRandomString (prefix) {
   const randomString = (
     Math.random().toString(36).substring(7)
