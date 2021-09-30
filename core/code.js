@@ -3,7 +3,7 @@ import {
   imageDataToDataUrl
 } from '../utils/index.js'
 import {TYPE_STRUCTURE} from './structure.js'
-import {TYPE_INLINE_BLOCK} from './structure-enhance.js'
+import {TYPE_INLINE_BLOCK} from './style.js'
 
 const ERROR_PIXEL = 2
 const TAG_DIV = '<div${attributes}>${content}</div>'

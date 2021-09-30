@@ -20,19 +20,19 @@ let g_detailedStuff
 
 export function addStylesToStructure (structure, detailedStuff) {
   g_detailedStuff = detailedStuff
-  enhanceBasics(structure)
+  enhanceStructure(structure)
   addStyles(structure)
   processStyles(structure)
   return structure
 }
 
-function enhanceBasics (structure) {
-  startProcess('enhanceBasics', _ => console.info(_))
-  recursivelyEnhanceBasics(structure)
-  endProcess('enhanceBasics', _ => console.info(_))
+function enhanceStructure (structure) {
+  startProcess('enhanceStructure', _ => console.info(_))
+  recursivelyEnhanceStructure(structure)
+  endProcess('enhanceStructure', _ => console.info(_))
 }
 
-function recursivelyEnhanceBasics (structure, parent) {
+function recursivelyEnhanceStructure (structure, parent) {
   structure.forEach(structureItem => {
     const {
       type, children, width, height,
@@ -87,7 +87,7 @@ function recursivelyEnhanceBasics (structure, parent) {
 
     structureItem.styles = styles
     if (children && children.length) {
-      recursivelyEnhanceBasics(children, structureItem)
+      recursivelyEnhanceStructure(children, structureItem)
     } else {
       addSubStructure(structureItem)
     }

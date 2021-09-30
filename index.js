@@ -4,7 +4,7 @@ import {
 import {checkDesign} from './core/prepare.js'
 import {extractStuff} from './core/stuff.js'
 import {extractStructure} from './core/structure.js'
-import {addStylesToStructure} from './core/structure-enhance.js'
+import {addStylesToStructure} from './core/style.js'
 import {generateCode} from './core/code.js'
 
 /* Config */
@@ -73,7 +73,7 @@ function initAssistance (imageData, designSizeRatio) {
     if (x === latestX && y === latestY) return
     focusPosition.x = x
     focusPosition.y = y
-    const focusImageData = ctx.createImageData(width, height)
+    const focusImageData = new ImageData(width, height)
     const {data} = focusImageData
     data.set(imageData.data)
     const index = (y * width + x) * 4

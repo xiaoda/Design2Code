@@ -57,7 +57,7 @@ export function sobel (imageData) {
       }
     }
   })
-  const edgeImageData = window.ctx.createImageData(
+  const edgeImageData = new ImageData(
     width, height
   )
   for (let i = 0; i < grayData.length - 1; i++) {

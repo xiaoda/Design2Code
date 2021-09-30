@@ -125,7 +125,7 @@ function getLineDataByLoop (imageData, start, step, stop) {
 
 function correctImageData (imageData, direction, index) {
   const {data, width, height} = imageData
-  const newImageData = window.ctx.createImageData(width, height)
+  const newImageData = new ImageData(width, height)
   for (let i = 0; i < data.length; i += 4) {
     const indexInRow = (i / 4) % width
     const indexFromBehindInRow = width - 1 - indexInRow
