@@ -1,6 +1,6 @@
 import {
   startProcess, endProcess, capitalize,
-  rgbToHex, mixColors, accumulateColors,
+  rgbToHex, hexToRgb, mixColors, accumulateColors,
   getColorsStandardVariance, imageDataToDataUrl
 } from '../utils/index.js'
 import ColorCounter from '../utils/color-counter.js'
@@ -14,6 +14,7 @@ export const TYPE_INLINE_BLOCK = {
 const VARIANCE_BORDER_COLOR_LIMIT = 10
 const VARIANCE_BORDER_RADIUS_COLOR_LIMIT = 20
 const VARIANCE_SAME_COLOR_LIMIT = 2
+const VARIANCE_SURROUNDING_COLOR_LIMIT = 5
 const ERROR_PIXEL = 2
 
 let g_detailedStuff
@@ -286,10 +287,10 @@ function recursivelyAddStyles (structure) {
       (children && children.length) ||
       (subStructure && subStructure.length)
     )
-    const styles = {}
-    const preStyles = {}
+    let styles = {}
+    let preStyles = {}
 
-    /* Background color */
+    /* Background */
     if (hasChildrenOrSubStructure) {
       const backgroundColor = getBackgroundColor(structureItem)
       if (backgroundColor) {
@@ -316,6 +317,12 @@ function recursivelyAddStyles (structure) {
           styles.borderRadius = `${borderProperties.borderRadius}px`
         }
       }
+    }
+
+    /* Font */
+    if (type === TYPE_INLINE_BLOCK.TEXT) {
+      const fontStyles = inspectFontStyles(structureItem)
+      styles = {...styles, ...fontStyles}
     }
 
     structureItem.styles = {...structureItem.styles, ...styles}
@@ -560,6 +567,125 @@ function detectBorder (structure, backgroundColor) {
   return result
 }
 
+function inspectFontStyles (structure) {
+  const fontStyles = {}
+  const {left, top, width, height} = structure
+  const imageData = window.ctx.getImageData(left, top, width, height)
+  const {data} = imageData
+  const surroundingColor = getSurroundingColor(width, height, data)
+  const blankRowsIndex = getBlankRowsIndex(
+    width, height, data, surroundingColor
+  )
+  if (blankRowsIndex.length) {
+    // Waiting for more cases
+  } else {
+    fontStyles.fontSize =
+    fontStyles.lineHeight = `${height}px`
+  }
+  const fontColors = getFontColors(
+    width, height, data, surroundingColor
+  )
+  return fontStyles
+}
+
+function getSurroundingColor (width, height, data) {
+  const surroundingColorData = new ColorCounter()
+
+  function _collectSurroundingColor (index) {
+    index *= 4
+    const r = data[index]
+    const g = data[index + 1]
+    const b = data[index + 2]
+    const hex = rgbToHex(r, g, b)
+    surroundingColorData.addValue(hex)
+  }
+
+  for (let i = 0; i < width - 1; i++) {
+    const index = i
+    _collectSurroundingColor(index)
+  }
+  for (let i = 0; i < height - 1; i++) {
+    const index = (i + 1) * width - 1
+    _collectSurroundingColor(index)
+  }
+  for (let i = 1; i < height; i++) {
+    const index = i * width
+    _collectSurroundingColor(index)
+  }
+  for (let i = 1; i < width; i++) {
+    const index = (height - 1) * width + i
+    _collectSurroundingColor(index)
+  }
+  const surroundingColor = surroundingColorData.getFirstValueByCount()
+  return surroundingColor
+}
+
+function getBlankRowsIndex (width, height, data, surroundingColor) {
+  const blankRowsIndex = []
+  for (let i = 0; i < height; i++) {
+    let colorAberrationExisted = false
+    for (let j = 0; j < width; j++) {
+      const index = (i * width + j) * 4
+      const r = data[index]
+      const g = data[index + 1]
+      const b = data[index + 2]
+      const hex = rgbToHex(r, g, b)
+      const colorsStandardVariance = getColorsStandardVariance(
+        hex, surroundingColor
+      )
+      if (colorsStandardVariance > VARIANCE_SURROUNDING_COLOR_LIMIT) {
+        colorAberrationExisted = true
+        break
+      }
+    }
+    if (!colorAberrationExisted) {
+      blankRowsIndex.push(i)
+    }
+  }
+  return blankRowsIndex
+}
+
+function getFontColors (width, height, data, surroundingColor) {
+  const fontColors = []
+
+  function _isSimilarColor (color1, color2) {
+    const {r, g, b} = hexToRgb(surroundingColor)
+    const {r: r1, g: g1, b: b1} = hexToRgb(color1)
+    const {r: r2, g: g2, b: b2} = hexToRgb(color2)
+    const ratioR = (r1 - r) / (r2 - r)
+    const ratioG = (g1 - g) / (g2 - g)
+    const ratioB = (b1 - b) / (b2 - b)
+    // todo
+  }
+
+  for (let i = 0; i < width; i++) {
+    for (let j = 0; j < height; j++) {
+      const index = (j * width + i) * 4
+      const r = data[index]
+      const g = data[index + 1]
+      const b = data[index + 2]
+      const hex = rgbToHex(r, g, b)
+      const colorsStandardVariance = getColorsStandardVariance(
+        hex, surroundingColor
+      )
+      if (
+        colorsStandardVariance < VARIANCE_SURROUNDING_COLOR_LIMIT
+      ) continue
+      if (fontColors.length) {
+        let matchingColor = null
+        fontColors.forEach(fontColor => {
+          if (_isSimilarColor(fontColor, hex)) {
+
+          }
+        })
+      } else {
+        fontColors.push(hex)
+      }
+    }
+  }
+  return fontColors
+}
+
 function processStyles (structure) {
   startProcess('processStyles', _ => console.info(_))
   recursivelyProcessStyles(structure)
@@ -579,7 +705,7 @@ function recursivelyProcessStyles (structure) {
     }
     const {backgroundColor} = preStyles
 
-    /* Background color */
+    /* Background */
     if (backgroundColor) {
       const backgroundColorGroup = [backgroundColor]
       childrenOrSubStructure.forEach(child => {

@@ -44,6 +44,10 @@ export function roundSize (size) {
   return size
 }
 
+export function getStandardVariance (...numbers) {
+  // todo
+}
+
 export function rgbToHex (r, g, b) {
   return `${decToHex(r)}${decToHex(g)}${decToHex(b)}`
 }

@@ -70,12 +70,4 @@ export default class ColorCounter extends ValueCounter {
     const averageVariance = varianceSum / this.totalCount
     return averageVariance
   }
-
-  getStandardDeviation () {
-    return this.useCache('standardDeviation', _ => {
-      const variance = this.getVariance()
-      const standardDeviation = variance ** 0.5
-      return standardDeviation
-    })
-  }
 }
