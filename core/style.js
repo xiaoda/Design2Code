@@ -15,6 +15,7 @@ const VARIANCE_BORDER_COLOR_LIMIT = 10
 const VARIANCE_BORDER_RADIUS_COLOR_LIMIT = 20
 const VARIANCE_SAME_COLOR_LIMIT = 2
 const VARIANCE_SURROUNDING_COLOR_LIMIT = 5
+const RANGE_SIMILAR_COLOR_RATIO = 1.05
 const ERROR_PIXEL = 2
 
 let g_detailedStuff
@@ -582,9 +583,10 @@ function inspectFontStyles (structure) {
     fontStyles.fontSize =
     fontStyles.lineHeight = `${height}px`
   }
-  const fontColors = getFontColors(
-    width, height, data, surroundingColor
-  )
+  const fontColors = getFontColors(data, surroundingColor)
+  if (fontColors.length) {
+    fontStyles.color = `#${fontColors[0]}`
+  }
   return fontStyles
 }
 
@@ -645,7 +647,7 @@ function getBlankRowsIndex (width, height, data, surroundingColor) {
   return blankRowsIndex
 }
 
-function getFontColors (width, height, data, surroundingColor) {
+function getFontColors (data, surroundingColor) {
   const fontColors = []
 
   function _isSimilarColor (color1, color2) {
@@ -655,32 +657,61 @@ function getFontColors (width, height, data, surroundingColor) {
     const ratioR = (r1 - r) / (r2 - r)
     const ratioG = (g1 - g) / (g2 - g)
     const ratioB = (b1 - b) / (b2 - b)
-    // todo
+    let result = false
+    if (
+      ratioR / ratioG < RANGE_SIMILAR_COLOR_RATIO &&
+      ratioR / ratioG > 1 / RANGE_SIMILAR_COLOR_RATIO &&
+      ratioR / ratioB < RANGE_SIMILAR_COLOR_RATIO &&
+      ratioR / ratioB > 1 / RANGE_SIMILAR_COLOR_RATIO &&
+      ratioG / ratioB < RANGE_SIMILAR_COLOR_RATIO &&
+      ratioG / ratioB > 1 / RANGE_SIMILAR_COLOR_RATIO
+    ) result = true
+    return result
   }
 
-  for (let i = 0; i < width; i++) {
-    for (let j = 0; j < height; j++) {
-      const index = (j * width + i) * 4
-      const r = data[index]
-      const g = data[index + 1]
-      const b = data[index + 2]
-      const hex = rgbToHex(r, g, b)
-      const colorsStandardVariance = getColorsStandardVariance(
-        hex, surroundingColor
-      )
-      if (
-        colorsStandardVariance < VARIANCE_SURROUNDING_COLOR_LIMIT
-      ) continue
-      if (fontColors.length) {
-        let matchingColor = null
-        fontColors.forEach(fontColor => {
-          if (_isSimilarColor(fontColor, hex)) {
-
-          }
-        })
-      } else {
-        fontColors.push(hex)
+  function _getStrongestContrastColor (...colors) {
+    const {r: R} = hexToRgb(surroundingColor)
+    let tempRange = 0
+    let tempColor = null
+    colors.forEach(color => {
+      const {r} = hexToRgb(color)
+      const range = Math.abs(r - R)
+      if (range > tempRange) {
+        tempRange = range
+        tempColor = color
       }
+    })
+    return tempColor
+  }
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i]
+    const g = data[i + 1]
+    const b = data[i + 2]
+    const hex = rgbToHex(r, g, b)
+    const colorsStandardVariance = getColorsStandardVariance(
+      hex, surroundingColor
+    )
+    if (
+      colorsStandardVariance < VARIANCE_SURROUNDING_COLOR_LIMIT
+    ) continue
+    if (fontColors.length) {
+      let matchingColors = []
+      fontColors.forEach(fontColor => {
+        if (_isSimilarColor(fontColor, hex)) {
+          matchingColors.push(fontColor)
+        }
+      })
+      matchingColors.forEach((fontColor, index) => {
+        const strongestContrastColor = _getStrongestContrastColor(
+          fontColor, hex
+        )
+        if (hex === strongestContrastColor) {
+          matchingColors.splice(index, 1, hex)
+        }
+      })
+    } else {
+      fontColors.push(hex)
     }
   }
   return fontColors
