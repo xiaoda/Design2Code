@@ -13,9 +13,10 @@ export const TYPE_INLINE_BLOCK = {
 }
 const VARIANCE_BORDER_COLOR_LIMIT = 10
 const VARIANCE_BORDER_RADIUS_COLOR_LIMIT = 20
-const VARIANCE_SAME_COLOR_LIMIT = 2
-const VARIANCE_SURROUNDING_COLOR_LIMIT = 5
-const RANGE_SIMILAR_COLOR_RATIO = 1.05
+const VARIANCE_SAME_BORDER_COLOR_LIMIT = 2
+const VARIANCE_SURROUNDING_COLOR_LIMIT = 2
+const VARIANCE_FONT_COLOR_LIMIT = 15
+const RANGE_SIMILAR_COLOR_RATIO = 1.2
 const ERROR_PIXEL = 2
 
 let g_detailedStuff
@@ -280,7 +281,7 @@ function addStyles (structure) {
 function recursivelyAddStyles (structure) {
   structure.forEach(structureItem => {
     const {
-      type, width, height,
+      type, text, width, height,
       top, bottom, left, right,
       children, subStructure
     } = structureItem
@@ -322,6 +323,7 @@ function recursivelyAddStyles (structure) {
 
     /* Font */
     if (type === TYPE_INLINE_BLOCK.TEXT) {
+      console.log('text', text)
       const fontStyles = inspectFontStyles(structureItem)
       styles = {...styles, ...fontStyles}
     }
@@ -493,7 +495,7 @@ function detectBorder (structure, backgroundColor) {
         const colorsStandardVariance = getColorsStandardVariance(
           color1, color2
         )
-        if (colorsStandardVariance > VARIANCE_SAME_COLOR_LIMIT) {
+        if (colorsStandardVariance > VARIANCE_SAME_BORDER_COLOR_LIMIT) {
           borderWidth = 1
           borderColor = accumulateColors(color1, color2)
         } else {
@@ -508,7 +510,7 @@ function detectBorder (structure, backgroundColor) {
           color1, color2
         )
         borderWidth = (
-          colorsStandardVariance > VARIANCE_SAME_COLOR_LIMIT ?
+          colorsStandardVariance > VARIANCE_SAME_BORDER_COLOR_LIMIT ?
           borderColorGroup.length - 1 :
           borderColorGroup.length
         )
@@ -651,12 +653,11 @@ function getFontColors (data, surroundingColor) {
   const fontColors = []
 
   function _isSimilarColor (color1, color2) {
-    const {r, g, b} = hexToRgb(surroundingColor)
     const {r: r1, g: g1, b: b1} = hexToRgb(color1)
     const {r: r2, g: g2, b: b2} = hexToRgb(color2)
-    const ratioR = (r1 - r) / (r2 - r)
-    const ratioG = (g1 - g) / (g2 - g)
-    const ratioB = (b1 - b) / (b2 - b)
+    const ratioR = r1 / r2
+    const ratioG = g1 / g2
+    const ratioB = b1 / b2
     let result = false
     if (
       ratioR / ratioG < RANGE_SIMILAR_COLOR_RATIO &&
@@ -693,7 +694,7 @@ function getFontColors (data, surroundingColor) {
       hex, surroundingColor
     )
     if (
-      colorsStandardVariance < VARIANCE_SURROUNDING_COLOR_LIMIT
+      colorsStandardVariance < VARIANCE_FONT_COLOR_LIMIT
     ) continue
     if (fontColors.length) {
       let matchingColors = []
@@ -702,12 +703,15 @@ function getFontColors (data, surroundingColor) {
           matchingColors.push(fontColor)
         }
       })
-      matchingColors.forEach((fontColor, index) => {
+      matchingColors.forEach(fontColor => {
         const strongestContrastColor = _getStrongestContrastColor(
           fontColor, hex
         )
         if (hex === strongestContrastColor) {
-          matchingColors.splice(index, 1, hex)
+          const index = fontColors.findIndex(tempColor => {
+            return tempColor === fontColor
+          })
+          fontColors.splice(index, 1, hex)
         }
       })
     } else {
