@@ -323,8 +323,7 @@ function recursivelyAddStyles (structure) {
 
     /* Font */
     if (type === TYPE_INLINE_BLOCK.TEXT) {
-      console.log('text', text)
-      const fontStyles = inspectFontStyles(structureItem)
+      const fontStyles = inspectFontStyles(structureItem, text)
       styles = {...styles, ...fontStyles}
     }
 
@@ -570,7 +569,7 @@ function detectBorder (structure, backgroundColor) {
   return result
 }
 
-function inspectFontStyles (structure) {
+function inspectFontStyles (structure, text) {
   const fontStyles = {}
   const {left, top, width, height} = structure
   const imageData = window.ctx.getImageData(left, top, width, height)
@@ -582,8 +581,15 @@ function inspectFontStyles (structure) {
   if (blankRowsIndex.length) {
     // Waiting for more cases
   } else {
+    const isNumbersAndSymbols = (
+      /^[0-9\~\!\@\#\$\%\&\*\(\)\-\_\=|+\[\]\{\}\:\;\'\"\,\.\<\>\?\/\\]+$/.test(text)
+    )
+    let size = height
+    if (isNumbersAndSymbols) {
+      size = Math.floor(size * 1.2)
+    }
     fontStyles.fontSize =
-    fontStyles.lineHeight = `${height}px`
+    fontStyles.lineHeight = `${size}px`
   }
   const fontColors = getFontColors(data, surroundingColor)
   if (fontColors.length) {
