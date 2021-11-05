@@ -3,6 +3,7 @@ import {
   rgbToHex, hexToRgb, mixColors, accumulateColors,
   getColorsStandardVariance, imageDataToDataUrl
 } from '../utils/index.js'
+import {numberRegExp, symbolRegExp} from '../utils/reg-exp.js'
 import ColorCounter from '../utils/color-counter.js'
 import {TYPE_STRUCTURE} from './structure.js'
 import {findText} from './recognize.js'
@@ -11,12 +12,15 @@ export const TYPE_INLINE_BLOCK = {
   IMAGE: 'image',
   TEXT: 'text'
 }
-const VARIANCE_BORDER_COLOR_LIMIT = 10
-const VARIANCE_BORDER_RADIUS_COLOR_LIMIT = 20
-const VARIANCE_SAME_BORDER_COLOR_LIMIT = 2
-const VARIANCE_SURROUNDING_COLOR_LIMIT = 2
-const VARIANCE_FONT_COLOR_LIMIT = 15
-const RANGE_SIMILAR_COLOR_RATIO = 1.2
+const PIXEL_SINGLE_LINE = 56
+const STANDARD_VARIANCE_BORDER_COLOR = 10
+const STANDARD_VARIANCE_BORDER_RADIUS_COLOR = 20
+const STANDARD_VARIANCE_SAME_BORDER_COLOR = 2
+const STANDARD_VARIANCE_SURROUNDING_COLOR = 2
+const STANDARD_VARIANCE_FONT_COLOR = 15
+const RATIO_SINGLE_LINE_SIZE = 1.5
+const RATIO_SIMILAR_COLOR = 1.2
+const RATIO_ONLY_NUMBERS_SYMBOLS = 1.2
 const ERROR_PIXEL = 2
 
 let g_detailedStuff
@@ -125,7 +129,15 @@ function addSubStructure (structure) {
     } else {
       const type = TYPE_INLINE_BLOCK.TEXT
       const content = text
-      htmlObjectGroup.push({type, content})
+      const contentLength = content.length
+      const sizeRatio = width / height
+      const probablyContainImage = Boolean(
+        height < PIXEL_SINGLE_LINE &&
+        sizeRatio / contentLength > RATIO_SINGLE_LINE_SIZE
+      )
+      htmlObjectGroup.push({
+        type, content, probablyContainImage
+      })
     }
   })
 
@@ -177,25 +189,27 @@ function addSubStructure (structure) {
   htmlObjectGroup.forEach((htmlObject, index) => {
     if (index < tempCurrentIndex) return
     const {
-      type, content, src
+      type, content, src, probablyContainImage
     } = htmlObject
     switch (type) {
       case TYPE_INLINE_BLOCK.TEXT: {
         let text = ''
-        for (
-          let i = index;
-          i < htmlObjectGroup.length;
-          i++
-        ) {
+        let tempContainImage = probablyContainImage
+        for (let i = index; i < htmlObjectGroup.length; i++) {
           const tempHtmlObject = htmlObjectGroup[i]
-          const {content, type} = tempHtmlObject
+          const {
+            content, type, probablyContainImage
+          } = tempHtmlObject
+          tempContainImage |= probablyContainImage
           if (type === TYPE_INLINE_BLOCK.TEXT) {
             text += content
             if (i === htmlObjectGroup.length - 1) {
               const position = _getPosition(index, i)
               const styles = _getStyles(index)
               subStructureGroup.push({
-                type, text, styles, ...position
+                type, text, styles,
+                probablyContainImage: tempContainImage,
+                ...position
               })
               tempCurrentIndex = htmlObjectGroup.length
             }
@@ -204,6 +218,7 @@ function addSubStructure (structure) {
             const styles = _getStyles(index)
             subStructureGroup.push({
               type: TYPE_INLINE_BLOCK.TEXT,
+              probablyContainImage: tempContainImage,
               text, styles, ...position
             })
             tempCurrentIndex = i - 1
@@ -474,7 +489,7 @@ function detectBorder (structure, backgroundColor) {
       const colorsStandardVariance = getColorsStandardVariance(
         possibleBorderColor, backgroundColor
       )
-      if (colorsStandardVariance > VARIANCE_BORDER_COLOR_LIMIT) {
+      if (colorsStandardVariance > STANDARD_VARIANCE_BORDER_COLOR) {
         hasBorder = true
         borderColorGroup.push(possibleBorderColor)
       } else {
@@ -494,7 +509,7 @@ function detectBorder (structure, backgroundColor) {
         const colorsStandardVariance = getColorsStandardVariance(
           color1, color2
         )
-        if (colorsStandardVariance > VARIANCE_SAME_BORDER_COLOR_LIMIT) {
+        if (colorsStandardVariance > STANDARD_VARIANCE_SAME_BORDER_COLOR) {
           borderWidth = 1
           borderColor = accumulateColors(color1, color2)
         } else {
@@ -509,7 +524,7 @@ function detectBorder (structure, backgroundColor) {
           color1, color2
         )
         borderWidth = (
-          colorsStandardVariance > VARIANCE_SAME_BORDER_COLOR_LIMIT ?
+          colorsStandardVariance > STANDARD_VARIANCE_SAME_BORDER_COLOR ?
           borderColorGroup.length - 1 :
           borderColorGroup.length
         )
@@ -560,7 +575,7 @@ function detectBorder (structure, backgroundColor) {
     const colorsStandardVariance = getColorsStandardVariance(
       hex, distinguishColor
     )
-    if (colorsStandardVariance < VARIANCE_BORDER_RADIUS_COLOR_LIMIT) {
+    if (colorsStandardVariance < STANDARD_VARIANCE_BORDER_RADIUS_COLOR) {
       result.borderRadius = i
       break
     }
@@ -571,7 +586,9 @@ function detectBorder (structure, backgroundColor) {
 
 function inspectFontStyles (structure, text) {
   const fontStyles = {}
-  const {left, top, width, height} = structure
+  const {
+    left, top, width, height, probablyContainImage
+  } = structure
   const imageData = window.ctx.getImageData(left, top, width, height)
   const {data} = imageData
   const surroundingColor = getSurroundingColor(width, height, data)
@@ -581,12 +598,13 @@ function inspectFontStyles (structure, text) {
   if (blankRowsIndex.length) {
     // Waiting for more cases
   } else {
-    const isNumbersAndSymbols = (
-      /^[0-9\~\!\@\#\$\%\&\*\(\)\-\_\=|+\[\]\{\}\:\;\'\"\,\.\<\>\?\/\\]+$/.test(text)
+    const onlyNumbersAndSymbolsRegExp = new RegExp(
+      `^[${numberRegExp}${symbolRegExp}]+$`
     )
+    const isOnlyNumbersAndSymbols = onlyNumbersAndSymbolsRegExp.test(text)
     let size = height
-    if (isNumbersAndSymbols) {
-      size = Math.floor(size * 1.2)
+    if (isOnlyNumbersAndSymbols && !probablyContainImage) {
+      size = Math.floor(size * RATIO_ONLY_NUMBERS_SYMBOLS)
     }
     fontStyles.fontSize =
     fontStyles.lineHeight = `${size}px`
@@ -643,7 +661,7 @@ function getBlankRowsIndex (width, height, data, surroundingColor) {
       const colorsStandardVariance = getColorsStandardVariance(
         hex, surroundingColor
       )
-      if (colorsStandardVariance > VARIANCE_SURROUNDING_COLOR_LIMIT) {
+      if (colorsStandardVariance > STANDARD_VARIANCE_SURROUNDING_COLOR) {
         colorAberrationExisted = true
         break
       }
@@ -666,12 +684,12 @@ function getFontColors (data, surroundingColor) {
     const ratioB = b1 / b2
     let result = false
     if (
-      ratioR / ratioG < RANGE_SIMILAR_COLOR_RATIO &&
-      ratioR / ratioG > 1 / RANGE_SIMILAR_COLOR_RATIO &&
-      ratioR / ratioB < RANGE_SIMILAR_COLOR_RATIO &&
-      ratioR / ratioB > 1 / RANGE_SIMILAR_COLOR_RATIO &&
-      ratioG / ratioB < RANGE_SIMILAR_COLOR_RATIO &&
-      ratioG / ratioB > 1 / RANGE_SIMILAR_COLOR_RATIO
+      ratioR / ratioG < RATIO_SIMILAR_COLOR &&
+      ratioR / ratioG > 1 / RATIO_SIMILAR_COLOR &&
+      ratioR / ratioB < RATIO_SIMILAR_COLOR &&
+      ratioR / ratioB > 1 / RATIO_SIMILAR_COLOR &&
+      ratioG / ratioB < RATIO_SIMILAR_COLOR &&
+      ratioG / ratioB > 1 / RATIO_SIMILAR_COLOR
     ) result = true
     return result
   }
@@ -700,7 +718,7 @@ function getFontColors (data, surroundingColor) {
       hex, surroundingColor
     )
     if (
-      colorsStandardVariance < VARIANCE_FONT_COLOR_LIMIT
+      colorsStandardVariance < STANDARD_VARIANCE_FONT_COLOR
     ) continue
     if (fontColors.length) {
       let matchingColors = []

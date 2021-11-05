@@ -3,9 +3,9 @@ import {
 } from '../utils/index.js'
 import ColorCounter from '../utils/color-counter.js'
 
-const PIXEL_EXTRA_LINE_LIMIT = 4
-const VARIANCE_MIN_LIMIT = 1
-const VARIANCE_MAX_LIMIT = 30
+const PIXEL_EXTRA_LINE = 4
+const STANDARD_VARIANCE_MIN_LIMIT = 1
+const STANDARD_VARIANCE_MAX_LIMIT = 30
 
 export function checkDesign (imageData) {
   imageData = checkBoundary(imageData)
@@ -62,7 +62,7 @@ function checkExtraLine (imageData, direction) {
   let count = 0
   while (
     !extraLineFound &&
-    count < PIXEL_EXTRA_LINE_LIMIT
+    count < PIXEL_EXTRA_LINE
   ) {
     const start = (
       direction === 'left' ?
@@ -78,19 +78,19 @@ function checkExtraLine (imageData, direction) {
         lineDataGroup.length - 1
       ]
       const lastLineAverage = lastLineData.getAverage()
-      const lastLineVariance = lastLineData.getStandardVariance()
+      const lastLineStandardVariance = lastLineData.getStandardVariance()
       const lineAverage = lineData.getAverage()
-      const lineVariance = lineData.getStandardVariance()
+      const lineStandardVariance = lineData.getStandardVariance()
       const varianceOfLines = lineData
         .getStandardVarianceFromAnother(lastLineData)
       const conditionA = (
-        lastLineVariance < VARIANCE_MIN_LIMIT &&
-        lineVariance > VARIANCE_MAX_LIMIT
+        lastLineStandardVariance < STANDARD_VARIANCE_MIN_LIMIT &&
+        lineStandardVariance > STANDARD_VARIANCE_MAX_LIMIT
       )
       const conditionB = (
-        lastLineVariance < VARIANCE_MIN_LIMIT &&
-        lineVariance < VARIANCE_MIN_LIMIT &&
-        varianceOfLines > VARIANCE_MAX_LIMIT
+        lastLineStandardVariance < STANDARD_VARIANCE_MIN_LIMIT &&
+        lineStandardVariance < STANDARD_VARIANCE_MIN_LIMIT &&
+        varianceOfLines > STANDARD_VARIANCE_MAX_LIMIT
       )
       if (conditionA || conditionB) {
         extraLineFound = true

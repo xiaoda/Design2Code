@@ -5,10 +5,10 @@ const PIXEL_ERROR_LIMIT = 4
 const PIXEL_BORDER_LIMIT = 2
 const PIXEL_VERTICAL_ALIGNED = 8
 const PIXEL_VERTICAL_DISTANCE = 40
-const PIXEL_VERTICAL_SPACE_LIMIT = 0
+const PIXEL_VERTICAL_SPACE = 0
 const PIXEL_HORIZONTAL_ALIGNED = 8
 const PIXEL_HORIZONTAL_DISTANCE = 30
-const PIXEL_HORIZONTAL_SPACE_LIMIT = 0
+const PIXEL_HORIZONTAL_SPACE = 0
 
 export const TYPE_STRUCTURE = {
   BLOCK: 'block',
@@ -360,7 +360,7 @@ function splitStuffByHorizontalSpace (stuff) {
     return [top, bottom]
   })
   const verticalCoverage = mergeRanges(
-    PIXEL_VERTICAL_SPACE_LIMIT, ...verticalRanges
+    PIXEL_VERTICAL_SPACE, ...verticalRanges
   )
   const splitedStuff = Array(verticalCoverage.length)
   for (let i = 0; i < splitedStuff.length; i++) {
@@ -384,7 +384,7 @@ function splitStuffByVerticalSpace (stuff) {
     return [left, right]
   })
   const horizontalCoverage = mergeRanges(
-    PIXEL_HORIZONTAL_SPACE_LIMIT, ...horizontalRanges
+    PIXEL_HORIZONTAL_SPACE, ...horizontalRanges
   )
   const splitedStuff = Array(horizontalCoverage.length)
   for (let i = 0; i < splitedStuff.length; i++) {
